@@ -1,42 +1,96 @@
-# sv
+# AIRRI — AI Resilient Reading Interface
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+AIRRI is an **experimental SvelteKit application** for rendering text onto a canvas and applying **perceptual perturbations** (such as noise, masking, and stripes) to study AI-resilient reading and obfuscation techniques.
 
-## Creating a project
 
-If you're seeing this, you've probably already done this step. Congrats!
+---
 
-```sh
-# create a new project
-npx sv create my-app
+## Requirements
+
+- **Node.js v22.19.0** (tested)
+- **npm** (bundled with Node)
+
+
+## Installation
+
+From the project root:
+
+```bash
+npm install
 ```
 
-To recreate this project with the same configuration:
+This installs all required SvelteKit, Vite, and development dependencies.
 
-```sh
-# recreate this project
-npx sv create --template minimal --types ts --add prettier eslint --install npm airri
-```
+---
 
-## Developing
+## Running the Project (Development)
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Start the local development server:
 
-```sh
+```bash
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
 
-To create a production version of your app:
+Open that URL in your browser.
 
-```sh
-npm run build
+---
+
+
+## Quick Tutorial
+
+### 1. Enter Text
+On the left side of the interface, type or paste text into the input box.  
+As you type, the text is immediately rendered onto the canvas on the right.
+
+### 2. Apply Perturbations
+Below the text input are sliders for each available perturbation:
+
+- **Noise** – adds random visual noise over the text
+- **Stripes** – placeholder (no effect yet)
+- **Mask** – placeholder (no effect yet)
+
+Move a slider away from zero to apply that perturbation.  
+Higher values increase the strength of the effect.
+
+Multiple perturbations can be adjusted independently (effects are layered).
+
+### 3. View Canvas Output
+The right panel displays the final rendered result on an HTML `<canvas>`:
+- Base text is drawn first
+- Perturbations are drawn as overlay layers
+- Updates happen in real time as text or sliders change
+
+To remove an effect, set its slider back to zero, or press the clear button.
+
+---
+
+## Project Structure (High Level)
+
+```text
+src/
+├─ routes/
+│  └─ +page.svelte                 # Main application layout
+├─ lib/
+│  ├─ components/
+│  │  ├─ TextInput.svelte          # Text input panel
+│  │  └─ CanvasReader.svelte       # Canvas rendering + perturbations
+│  └─ canvas/
+│     ├─ drawText.ts               # Base text rendering logic
+│     └─ perturbations/
+│        └─ noise.ts               # Noise perturbation (others WIP)
 ```
 
-You can preview the production build with `npm run preview`.
+---
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+## Features
+
+- Text input rendered onto an HTML `<canvas>`
+- Slider-controlled perturbations:
+  - Noise (implemented)
+  - Stripes (placeholder)
+  - Mask (placeholder)
+- Real-time redraw on text or slider changes
+
+---
+
