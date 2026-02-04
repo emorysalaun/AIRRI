@@ -4,7 +4,7 @@
 
 <section class="panel">
 	<h2>Input</h2>
-	<textarea bind:value spellcheck="false"></textarea>
+	<textarea bind:value />
 </section>
 
 <style>
@@ -12,14 +12,15 @@
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
+		height: 100%;
 		min-height: 0;
 	}
+
 	textarea {
 		flex: 1;
+		min-height: 0;
 		width: 100%;
 		resize: none;
-		padding: 12px;
-		border: 1px solid #ddd;
-		border-radius: 8px;
+		box-sizing: border-box;
 	}
 </style>

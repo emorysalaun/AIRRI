@@ -3,13 +3,50 @@
 	import CanvasReader from '$lib/components/CanvasReader.svelte';
 
 	let text = '';
+
+	// 0..1 intensities
+	let noise = 0;
+	let stripes = 0;
+	let mask = 0;
+
+	function clearPerturbations() {
+		noise = 0;
+		stripes = 0;
+		mask = 0;
+	}
 </script>
 
-<title>AIRRI - AI Resilient Reading Interface</title>
+<svelte:head>
+	<title>AIRRI - AI Resilient Reading Interface</title>
+</svelte:head>
 
 <div class="grid">
-	<TextInput bind:value={text} />
-	<CanvasReader {text} />
+	<div class="left">
+			<div class="inputWrap">
+			  <TextInput bind:value={text} />
+		  </div>
+
+		<div class="controls">
+			<div class="row">
+				<label for="noise">Noise: {noise.toFixed(2)}</label>
+				<input id="noise" type="range" min="0" max="1" step="0.01" bind:value={noise} />
+			</div>
+
+			<div class="row">
+				<label for="stripes">Stripes: {stripes.toFixed(2)}</label>
+				<input id="stripes" type="range" min="0" max="1" step="0.01" bind:value={stripes} />
+			</div>
+
+			<div class="row">
+				<label for="mask">Mask: {mask.toFixed(2)}</label>
+				<input id="mask" type="range" min="0" max="1" step="0.01" bind:value={mask} />
+			</div>
+
+			<button type="button" on:click={clearPerturbations}>Clear</button>
+		</div>
+	</div>
+
+	<CanvasReader {text} {noise} {stripes} {mask} />
 </div>
 
 <style>
@@ -21,4 +58,44 @@
 		height: calc(100vh - 32px);
 		box-sizing: border-box;
 	}
+
+	.left {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		min-height: 0;
+	}
+
+	.controls {
+		border: 1px solid #ddd;
+		border-radius: 8px;
+		padding: 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+
+	.row {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	input[type='range'] {
+		width: 100%;
+	}
+
+
+.inputWrap {
+	flex: 1;        /* <-- THIS is the fix */
+	min-height: 0;  /* <-- required in constrained layouts */
+}
+
+/* If TextInput uses a textarea (very likely) */
+.inputWrap :global(textarea) {
+	height: 100%;
+	width: 100%;
+	resize: none;
+	box-sizing: border-box;
+}
 </style>
