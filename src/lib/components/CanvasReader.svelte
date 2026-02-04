@@ -9,7 +9,7 @@
 		if (!canvas) return;
 
 		const lines = (text || '').split('\n').length || 1;
-		const h = 32 + lines * 24;
+		const h = 32 + lines * 36;
 
 		// Dynamically changes the height of the canvas while adding lines.
 		canvas.style.height = `${h}px`;
