@@ -6,10 +6,16 @@
   let canvas: HTMLCanvasElement;
 
   function redraw() {
-    if (canvas) drawText(canvas, text);
+    if (!canvas) return;
+
+    const lines = (text || '').split('\n').length || 1;
+    const h = 32 + lines * 24;
+
+    // Dynamically changes the height of the canvas while adding lines.
+    canvas.style.height = `${h}px`; 
+    drawText(canvas, text);
   }
 
-  // When text changes, trigger a redraw.
   $: text, redraw();
 
   onMount(() => {
@@ -22,10 +28,23 @@
 
 <section class="panel">
   <h2>Canvas Output</h2>
-  <canvas bind:this={canvas}></canvas>
+  <div class="scroll">
+    <canvas bind:this={canvas}></canvas>
+  </div>
 </section>
 
 <style>
   .panel { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
-  canvas { flex: 1; width: 100%; border: 1px solid #ddd; border-radius: 8px; background: white; display: block; }
+
+  .scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: white;
+  }
+
+  canvas { display: block; width: 100%; }
 </style>
