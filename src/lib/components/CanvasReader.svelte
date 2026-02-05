@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { drawText, measureTextHeight } from '$lib/canvas/drawText';
     import {drawNoise} from '$lib/canvas/perturbations/noise';
+	import {drawStripes} from '$lib/canvas/perturbations/stripes';
 
 	export let text = '';
 	let canvas: HTMLCanvasElement;
@@ -23,13 +24,14 @@
         if (!ctx) return;
 
 		const rect = canvas.getBoundingClientRect();
+	
+		// Apply perturbations.
 		if (noise > 0) drawNoise(ctx, rect.width, rect.height, noise);
-
-		
+		if (stripes > 0) drawStripes(ctx, rect.width, rect.height, stripes, 8, 8, 45, 'rgba(0, 0, 0, 1)');	
 	}
 
 
-
+	// When these values change, redraw the canvas. 
 	$: text, redraw();
     $: noise, redraw();
     $: stripes, redraw();
