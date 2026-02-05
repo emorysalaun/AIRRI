@@ -1,4 +1,4 @@
-function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+export function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
 	const lines: string[] = [];
 
 	// Line ending fixing, again
@@ -30,6 +30,23 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number
 	}
 
 	return lines;
+}
+
+export function measureTextHeight(canvas: HTMLCanvasElement, text: string) {
+	const ctx = canvas.getContext('2d');
+	if (!ctx) return 0;
+
+	const rect = canvas.getBoundingClientRect();
+
+	ctx.font = `16px system-ui, sans-serif`;
+
+	const padding = 16;
+	const lineHeight = 22;
+
+	const usableWidth = rect.width - padding * 2;
+	const lines = wrapLines(ctx, text, usableWidth);
+
+	return padding * 2 + lines.length * lineHeight;
 }
 
 export function drawText(canvas: HTMLCanvasElement, text: string) {

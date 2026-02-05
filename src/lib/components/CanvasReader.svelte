@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { drawText } from '$lib/canvas/drawText';
+	import { drawText, measureTextHeight } from '$lib/canvas/drawText';
     import {drawNoise} from '$lib/canvas/perturbations/noise';
 
 	export let text = '';
@@ -13,11 +13,10 @@
 	function redraw() {
 		if (!canvas) return;
 
-		const lines = (text || '').split('\n').length || 1;
-		const h = 64 + lines * 36;
+		const neededH = measureTextHeight(canvas, text);
 
 		// Dynamically changes the height of the canvas while adding lines.
-		canvas.style.height = `${h}px`;
+		canvas.style.height = `${neededH}px`;
 		drawText(canvas, text);
 
         const ctx = canvas.getContext('2d');
@@ -28,6 +27,8 @@
 
 		
 	}
+
+
 
 	$: text, redraw();
     $: noise, redraw();
