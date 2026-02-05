@@ -38,27 +38,33 @@ export function drawText(canvas: HTMLCanvasElement, text: string) {
 
 	const dpr = window.devicePixelRatio || 1;
 	const rect = canvas.getBoundingClientRect();
+
+	// Drawing buffer size.
 	canvas.width = Math.floor(rect.width * dpr);
 	canvas.height = Math.floor(rect.height * dpr);
 
+	//draw using CSS pixels
+	ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+	// Clear in CSS pixels
 	ctx.fillStyle = '#fff';
-	ctx.fillRect(0, 0, canvas.width, canvas.height);
+	ctx.fillRect(0, 0, rect.width, rect.height);
 
 	ctx.fillStyle = '#111';
-	ctx.font = `${16 * dpr}px system-ui, sans-serif`;
+	ctx.font = `16px system-ui, sans-serif`;
 	ctx.textBaseline = 'top';
 
-	const padding = 16 * dpr;
-	const lineHeight = 22 * dpr;
+	const padding = 16;
+	const lineHeight = 22;
 
-	const usableWidth = canvas.width - padding * 2;
+	const usableWidth = rect.width - padding * 2;
 	const lines = wrapLines(ctx, text, usableWidth);
 
 	let y = padding;
-
 	for (const line of lines) {
-		if (y > canvas.height - padding) break;
+		if (y > rect.height - padding) break;
 		ctx.fillText(line, padding, y);
 		y += lineHeight;
 	}
 }
+

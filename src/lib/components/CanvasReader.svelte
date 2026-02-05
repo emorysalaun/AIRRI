@@ -14,7 +14,7 @@
 		if (!canvas) return;
 
 		const lines = (text || '').split('\n').length || 1;
-		const h = 32 + lines * 36;
+		const h = 64 + lines * 36;
 
 		// Dynamically changes the height of the canvas while adding lines.
 		canvas.style.height = `${h}px`;
@@ -23,7 +23,10 @@
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        if (noise > 0) drawNoise(ctx, canvas, noise);
+		const rect = canvas.getBoundingClientRect();
+		if (noise > 0) drawNoise(ctx, rect.width, rect.height, noise);
+
+		
 	}
 
 	$: text, redraw();
