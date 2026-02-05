@@ -37,9 +37,9 @@
 
 	onMount(() => {
 		redraw();
-		const onResize = () => redraw();
-		window.addEventListener('resize', onResize);
-		return () => window.removeEventListener('resize', onResize);
+		const ro = new ResizeObserver(() => redraw());
+		ro.observe(canvas);
+		return () => ro.disconnect();
 	});
 </script>
 
