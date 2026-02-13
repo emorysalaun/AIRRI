@@ -18,6 +18,7 @@ Thumbs.db
 .env.*
 !.env.example
 !.env.test
+activate.bat
 
 evaluation/.venv/
 /evaluation/data/renders
