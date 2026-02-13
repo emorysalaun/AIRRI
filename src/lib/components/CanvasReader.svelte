@@ -30,13 +30,14 @@
 		if (stripes > 0) drawStripes(ctx, rect.width, rect.height, stripes, 8, 8, 45, 'rgba(0, 0, 0, 1)');	
 	}
 
-	export function exportPng(filename = 'airri.png'){
+	export function exportPng(){
 		if (!canvas) return;
 		
 		const url = canvas.toDataURL('image/png');
 		const a = document.createElement('a');
 		a.href = url;
-		a.download = filename;
+		const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+		a.download = `airri-${timestamp}.png`;
 		a.click();
 	}
 

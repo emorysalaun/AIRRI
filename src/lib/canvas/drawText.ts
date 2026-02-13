@@ -38,7 +38,7 @@ export function measureTextHeight(canvas: HTMLCanvasElement, text: string) {
 
 	const rect = canvas.getBoundingClientRect();
 
-	ctx.font = `16px system-ui, sans-serif`;
+	ctx.font = `16px 'Roboto Mono', monospace`;
 
 	const padding = 16;
 	const lineHeight = 22;
@@ -68,7 +68,7 @@ export function drawText(canvas: HTMLCanvasElement, text: string) {
 	ctx.fillRect(0, 0, rect.width, rect.height);
 
 	ctx.fillStyle = '#111';
-	ctx.font = `16px system-ui, sans-serif`;
+	ctx.font = `16px 'Roboto Mono', monospace`;
 	ctx.textBaseline = 'top';
 
 	const padding = 16;
