@@ -30,8 +30,16 @@
 		if (stripes > 0) drawStripes(ctx, rect.width, rect.height, stripes, 8, 8, 45, 'rgba(0, 0, 0, 1)');	
 	}
 
+	export function exportPng(filename = 'airri.png'){
+		if (!canvas) return;
+		
+		const url = canvas.toDataURL('image/png');
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = filename;
+		a.click();
+	}
 
-	// When these values change, redraw the canvas. 
 	$: text, redraw();
     $: noise, redraw();
     $: stripes, redraw();
@@ -48,6 +56,7 @@
 <section class="panel">
 	<h2>Canvas Output</h2>
 	<div class="scroll">
+		<!-- assings the canvas made here as the canvas variable-->
 		<canvas bind:this={canvas}></canvas>
 	</div>
 </section>

@@ -3,6 +3,7 @@
 	import CanvasReader from '$lib/components/CanvasReader.svelte';
 
 	let text = '';
+	let reader: CanvasReader | null = null;
 
 	// 0..1 intensities
 	let noise = 0;
@@ -14,6 +15,11 @@
 		stripes = 0;
 		mask = 0;
 	}
+
+	function exportAsPng() {
+		console.log('reader:', reader);
+    	reader?.exportPng('airri.png');
+  }
 </script>
 
 <svelte:head>
@@ -43,10 +49,11 @@
 			</div>
 
 			<button type="button" on:click={clearPerturbations}>Clear</button>
+			<button type="button" on:click={exportAsPng}>Export</button>
 		</div>
 	</div>
 
-	<CanvasReader {text} {noise} {stripes} {mask} />
+	<CanvasReader bind:this={reader} {text} {noise} {stripes} {mask} />
 </div>
 
 <style>
