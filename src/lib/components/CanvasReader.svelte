@@ -32,12 +32,16 @@
 
 	export function exportPng(){
 		if (!canvas) return;
+
+		const noisePct = Math.round(noise * 100);
+  		const stripesPct = Math.round(stripes * 100);
+  		const maskPct = Math.round(mask * 100);
 		
 		const url = canvas.toDataURL('image/png');
 		const a = document.createElement('a');
 		a.href = url;
-		const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-		a.download = `airri-${timestamp}.png`;
+		const filename = `noise_${noisePct}_stripes_${stripesPct}_mask_${maskPct}.png`;
+		a.download = filename
 		a.click();
 	}
 
