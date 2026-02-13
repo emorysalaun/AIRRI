@@ -8,6 +8,7 @@ node_modules
 /.svelte-kit
 /build
 
+
 # OS
 .DS_Store
 Thumbs.db
@@ -19,6 +20,7 @@ Thumbs.db
 !.env.test
 
 evaluation/.venv/
+/evaluation/data/renders
 
 
 # Vite
