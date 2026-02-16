@@ -22,6 +22,7 @@ activate.bat
 
 evaluation/.venv/
 /evaluation/data/renders
+/evaluation/results
 
 
 # Vite
