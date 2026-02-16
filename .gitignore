@@ -23,7 +23,10 @@ activate.bat
 evaluation/.venv/
 /evaluation/data/renders
 /evaluation/results/*
+
+# Gitkeeps
 !evaluation/results/easyOCR/.gitkeep
+!evaluation/results/.gitkeep
 
 
 # Vite
