@@ -8,6 +8,9 @@ warnings.filterwarnings("ignore")
 BASE_DIR = Path(__file__).resolve().parent.parent
 # Relative pathing
 RENDERS_DIR = BASE_DIR / "data" / "renders"
+RESULTS_DIR = BASE_DIR / "results" / "easyOCR"
+
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 reader = easyocr.Reader(['en'], gpu=False)
 
@@ -25,3 +28,6 @@ for image_path in sorted(RENDERS_DIR.iterdir()):
 
     print(ocr_joined)
     print()
+
+    output_file = RESULTS_DIR / f"{image_path.stem}.txt"
+    output_file.write_text(ocr_joined, encoding="utf-8")
