@@ -22,7 +22,53 @@ BINARIZED_DIR.mkdir(parents=True, exist_ok=True)
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------
-# Binarization
+# Helper: sort OCR results in reading order
+# ---------------------------------------------------
+
+def sort_reading_order(results, line_threshold=25):
+    # -------------------------------------------------
+    # Convert OCR output to centers
+    # -------------------------------------------------
+    boxes = []
+    for bbox, text, conf in results:
+        xs = [p[0] for p in bbox]
+        ys = [p[1] for p in bbox]
+
+        cx = sum(xs) / 4
+        cy = sum(ys) / 4
+
+        boxes.append({"x": cx, "y": cy, "text": text})
+
+    lines = []
+
+    for box in boxes:
+        placed = False
+
+        for line in lines:
+            # compare with average y of existing line
+            avg_y = sum(b["y"] for b in line) / len(line)
+
+            if abs(box["y"] - avg_y) < line_threshold:
+                line.append(box)
+                placed = True
+                break
+
+        if not placed:
+            lines.append([box])
+
+    lines.sort(key=lambda line: sum(b["y"] for b in line) / len(line))
+
+    ordered_text = []
+
+    for line in lines:
+        line.sort(key=lambda b: b["x"])
+        ordered_text.extend([b["text"] for b in line])
+
+    return ordered_text
+
+
+# ---------------------------------------------------
+# Step 1 — Binarization
 # ---------------------------------------------------
 
 print("Step 1: Binarizing images...\n")
@@ -51,7 +97,7 @@ for image_path in image_paths:
 print("\nBinarization complete.\n")
 
 # ---------------------------------------------------
-# EasyOCR
+# Step 2 — EasyOCR
 # ---------------------------------------------------
 
 print("Step 2: Running EasyOCR...\n")
@@ -69,7 +115,8 @@ for image_path in binarized_images:
     print("=" * 50)
 
     result = reader.readtext(str(image_path))
-    texts = [txt for _, txt, _ in result]
+    texts = sort_reading_order(result)
+
     ocr_joined = " ".join(texts)
 
     print(ocr_joined)
