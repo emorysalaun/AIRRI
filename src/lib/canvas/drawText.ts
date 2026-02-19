@@ -110,7 +110,7 @@
 		const lineHeight = baseLineHeight + lineSpacing;
 
 		const usableWidth = rect.width - padding * 2;
-		const lines = wrapLines(ctx, text, usableWidth);
+		const lines = wrapLines(ctx, text, usableWidth, wordSpacing, charSpacing);
 
 		return padding * 2 + lines.length * lineHeight;
 	}
