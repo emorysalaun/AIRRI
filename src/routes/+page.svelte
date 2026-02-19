@@ -9,6 +9,7 @@
 	let noise = 0;
 	let stripes = 0;
 	let mask = 0;
+	let fontSize = 16;
 
 	function clearPerturbations() {
 		noise = 0;
@@ -47,13 +48,18 @@
 				<label for="mask">Mask: {mask.toFixed(2)}</label>
 				<input id="mask" type="range" min="0" max="1" step="0.01" bind:value={mask} />
 			</div>
+			<div class="row">
+				<label for="fontSize">Font Size: {fontSize.toFixed(2)}</label>
+				<input id="fontSize" type="range" min="1" max="48" step="1" bind:value={fontSize} />
+			</div>
+
 
 			<button type="button" on:click={clearPerturbations}>Clear</button>
 			<button type="button" on:click={exportAsPng}>Export</button>
 		</div>
 	</div>
 
-	<CanvasReader bind:this={reader} {text} {noise} {stripes} {mask} />
+	<CanvasReader bind:this={reader} {text} {noise} {stripes} {mask} {fontSize}/>
 </div>
 
 <style>

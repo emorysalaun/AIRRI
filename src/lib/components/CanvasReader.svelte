@@ -10,15 +10,16 @@
     export let noise = 0;
     export let stripes = 0;
     export let mask = 0;
+	export let fontSize = 16;
 
 	function redraw() {
 		if (!canvas) return;
 
-		const neededH = measureTextHeight(canvas, text);
+		const neededH = measureTextHeight(canvas, text, fontSize);
 
 		// Dynamically changes the height of the canvas while adding lines.
 		canvas.style.height = `${neededH}px`;
-		drawText(canvas, text);
+		drawText(canvas, text, fontSize);
 
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
@@ -49,6 +50,7 @@
     $: noise, redraw();
     $: stripes, redraw();
     $: mask, redraw();
+	$: fontSize, redraw();
 
 	onMount(() => {
 		redraw();
