@@ -21,12 +21,15 @@ Thumbs.db
 activate.bat
 
 evaluation/.venv/
-/evaluation/data/renders
-/evaluation/results/*
+evaluation/data/renders/*
+evaluation/data/binarized/* 
+evaluation/results/easyOCR/*
 
 # Gitkeeps
 !evaluation/results/easyOCR/.gitkeep
 !evaluation/results/.gitkeep
+!evaluation/data/renders/.gitkeep
+!evaluation/data/binarized/.gitkeep
 
 
 # Vite

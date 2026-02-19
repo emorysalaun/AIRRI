@@ -10,6 +10,7 @@
 	return w;
 	}
 
+	// Wraps text into lines that fit within maxWidth of the canvas, considering word and character spacing.
 	export function wrapLines(
 	ctx: CanvasRenderingContext2D,
 	text: string,
