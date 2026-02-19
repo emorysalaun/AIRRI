@@ -1,83 +1,103 @@
+	function measureWordWidth(ctx: CanvasRenderingContext2D, word: string, charSpacing: number) {
+	if (charSpacing <= 0) return ctx.measureText(word).width;
+
+	let w = 0;
+	for (let i = 0; i < word.length; i++) {
+		const ch = word[i];
+		w += ctx.measureText(ch).width;
+		if (i < word.length - 1) w += charSpacing;
+	}
+	return w;
+	}
+
 	export function wrapLines(
 	ctx: CanvasRenderingContext2D,
 	text: string,
-	maxWidth: number
+	maxWidth: number,
+	wordSpacing: number = 0,
+	charSpacing: number = 0
 	): string[] {
 	const lines: string[] = [];
 	const paragraphs = text.replace(/\r\n/g, "\n").split("\n");
 
+	const spaceW = ctx.measureText(" ").width;
+
 	function breakLongWord(word: string) {
-		// Split a long token into chunks that fit.
 		let chunk = "";
+		let chunkW = 0;
+
 		for (const ch of word) {
-		const next = chunk + ch;
-		if (ctx.measureText(next).width <= maxWidth) {
-			chunk = next;
+		const chW = ctx.measureText(ch).width;
+		const nextW = chunk === "" ? chW : chunkW + charSpacing + chW;
+
+		if (nextW <= maxWidth) {
+			chunk += ch;
+			chunkW = nextW;
 		} else {
 			if (chunk.length > 0) lines.push(chunk);
+
+			// start new chunk with this character
 			chunk = ch;
+			chunkW = chW;
 		}
 		}
+
 		if (chunk.length > 0) lines.push(chunk);
 	}
 
 	for (const paragraph of paragraphs) {
 		if (paragraph === "") {
-		// For blank line preservation.
 		lines.push("");
 		continue;
 		}
 
 		const words = paragraph.split(" ");
-		let currentLine = "";
+		let currentWords: string[] = [];
+		let currentW = 0;
 
 		for (const word of words) {
-			let nextLine = "";
+		const wordW = measureWordWidth(ctx, word, charSpacing);
 
-			// If the line is empty, don't add a leading space.
-			if (currentLine === "") {
-				nextLine = word;
-			} else {
-				// Otherwise we add a space before the next word.
-				nextLine = currentLine + " " + word;
-			}
+		// width if we add this word to current line
+		let nextW: number;
+		if (currentWords.length === 0) {
+			nextW = wordW;
+		} else {
+			// space + wordSpacing + word width
+			nextW = currentW + spaceW + wordSpacing + wordW;
+		}
 
-			if (ctx.measureText(nextLine).width <= maxWidth) {
-				currentLine = nextLine;
-				continue;
-			}
-			
-
-
-		if (ctx.measureText(nextLine).width <= maxWidth) {
-			currentLine = nextLine;
+		if (nextW <= maxWidth) {
+			currentWords.push(word);
+			currentW = nextW;
 			continue;
 		}
 
-		// commit current line if it exists
-		if (currentLine !== "") {
-			lines.push(currentLine);
-			currentLine = "";
+		// Commit current line if it exists
+		if (currentWords.length > 0) {
+			lines.push(currentWords.join(" "));
+			currentWords = [];
+			currentW = 0;
 		}
 
-		// place the word on a new line
-		if (ctx.measureText(word).width <= maxWidth) {
-			currentLine = word;
+		// Put the word on a new line (or break it)
+		if (wordW <= maxWidth) {
+			currentWords = [word];
+			currentW = wordW;
 		} else {
-			// if word is too long. break it.
 			breakLongWord(word);
-			currentLine = "";
 		}
 		}
 
-		lines.push(currentLine);
+		lines.push(currentWords.join(" "));
 	}
 
 	return lines;
 	}
 
 
-	export function measureTextHeight(canvas: HTMLCanvasElement, text: string, fontSize: number) {
+
+	export function measureTextHeight(canvas: HTMLCanvasElement, text: string, fontSize: number, lineSpacing: number = 0, wordSpacing: number = 0, charSpacing: number = 0,) {
 		const ctx = canvas.getContext('2d');
 		if (!ctx) return 0;
 
@@ -86,7 +106,8 @@
 		ctx.font = `${fontSize}px 'Roboto Mono', monospace`;
 
 		const padding = 16;
-		const lineHeight = fontSize + 4;
+		const baseLineHeight = fontSize + 4;
+		const lineHeight = baseLineHeight + lineSpacing;
 
 		const usableWidth = rect.width - padding * 2;
 		const lines = wrapLines(ctx, text, usableWidth);
@@ -94,8 +115,49 @@
 		return padding * 2 + lines.length * lineHeight;
 	}
 
-	export function drawText(canvas: HTMLCanvasElement, text: string, fontSize: number) {
-		const ctx = canvas.getContext('2d');
+
+	function drawLineWithSpacing(
+		ctx: CanvasRenderingContext2D,
+		line: string,
+		x: number,
+		y: number,
+		charSpacing: number,
+		wordSpacing: number
+		) {
+		const spaceW = ctx.measureText(" ").width;
+		const words = line.split(" ");
+
+		for (let wi = 0; wi < words.length; wi++) {
+			const word = words[wi];
+
+			if (charSpacing <= 0) {
+			ctx.fillText(word, x, y);
+			x += ctx.measureText(word).width;
+			} else {
+			for (let i = 0; i < word.length; i++) {
+				const ch = word[i];
+				ctx.fillText(ch, x, y);
+				x += ctx.measureText(ch).width;
+				if (i < word.length - 1) x += charSpacing;
+			}
+			}
+
+			if (wi < words.length - 1) {
+			x += spaceW + wordSpacing;
+			}
+		}
+	}
+
+
+	export function drawText(
+		canvas: HTMLCanvasElement,
+		text: string,
+		fontSize: number,
+		lineSpacing: number = 0,
+		wordSpacing: number = 0,
+		charSpacing: number = 0
+		) {
+		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
 
 		const dpr = window.devicePixelRatio || 1;
@@ -105,28 +167,28 @@
 		canvas.width = Math.floor(rect.width * dpr);
 		canvas.height = Math.floor(rect.height * dpr);
 
-		//draw using CSS pixels
+		// draw using CSS pixels
 		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
 		// Clear in CSS pixels
-		ctx.fillStyle = '#fff';
+		ctx.fillStyle = "#fff";
 		ctx.fillRect(0, 0, rect.width, rect.height);
 
-		ctx.fillStyle = '#111';
+		ctx.fillStyle = "#111";
 		ctx.font = `${fontSize}px 'Roboto Mono', monospace`;
-		ctx.textBaseline = 'top';
+		ctx.textBaseline = "top";
 
 		const padding = 16;
-		const lineHeight = fontSize + 4;
+		const baseLineHeight = fontSize + 4;
+		const lineHeight = baseLineHeight + lineSpacing;
 
 		const usableWidth = rect.width - padding * 2;
-		const lines = wrapLines(ctx, text, usableWidth);
+		const lines = wrapLines(ctx, text, usableWidth, wordSpacing, charSpacing);
 
 		let y = padding;
 		for (const line of lines) {
 			if (y > rect.height - padding) break;
-			ctx.fillText(line, padding, y);
+			drawLineWithSpacing(ctx, line, padding, y, charSpacing, wordSpacing);
 			y += lineHeight;
 		}
 	}
-

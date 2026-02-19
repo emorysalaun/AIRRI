@@ -9,17 +9,27 @@
 	let noise = 0;
 	let stripes = 0;
 	let mask = 0;
+
+	// Font stuff
 	let fontSize = 16;
+	let lineSpacing = 0;
+	let charSpacing = 0;
+	let wordSpacing = 0;
+
 
 	function clearPerturbations() {
 		noise = 0;
 		stripes = 0;
 		mask = 0;
+		lineSpacing = 0;
+		charSpacing = 0;
+		wordSpacing = 0;
+		fontSize = 16;
 	}
 
 	function exportAsPng() {
 		console.log('reader:', reader);
-    	reader?.exportPng('airri.png');
+    	reader?.exportPng();
   }
 </script>
 
@@ -52,6 +62,21 @@
 				<label for="fontSize">Font Size: {fontSize.toFixed(2)}</label>
 				<input id="fontSize" type="range" min="1" max="48" step="1" bind:value={fontSize} />
 			</div>
+			<div class="row">
+				<label for="lineSpacing">Line Spacing: {lineSpacing.toFixed(0)}px</label>
+				<input id="lineSpacing" type="range" min="0" max="40" step="1" bind:value={lineSpacing} />
+			</div>
+
+			<div class="row">
+				<label for="charSpacing">Character Spacing: {charSpacing.toFixed(1)}px</label>
+				<input id="charSpacing" type="range" min="0" max="10" step="0.5" bind:value={charSpacing} />
+			</div>
+
+			<div class="row">
+				<label for="wordSpacing">Word Spacing: {wordSpacing.toFixed(0)}px</label>
+				<input id="wordSpacing" type="range" min="0" max="30" step="1" bind:value={wordSpacing} />
+			</div>
+
 
 
 			<button type="button" on:click={clearPerturbations}>Clear</button>
@@ -59,7 +84,7 @@
 		</div>
 	</div>
 
-	<CanvasReader bind:this={reader} {text} {noise} {stripes} {mask} {fontSize}/>
+	<CanvasReader bind:this={reader} {text} {noise} {stripes} {mask} {fontSize} {lineSpacing} {charSpacing} {wordSpacing}/>
 </div>
 
 <style>

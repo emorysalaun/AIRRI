@@ -10,16 +10,20 @@
     export let noise = 0;
     export let stripes = 0;
     export let mask = 0;
+
+
 	export let fontSize = 16;
+	export let lineSpacing = 0;
+	export let charSpacing = 0;
+	export let wordSpacing = 0;
 
 	function redraw() {
 		if (!canvas) return;
 
-		const neededH = measureTextHeight(canvas, text, fontSize);
-
-		// Dynamically changes the height of the canvas while adding lines.
+		const neededH = measureTextHeight(canvas, text, fontSize, lineSpacing, wordSpacing, charSpacing);
 		canvas.style.height = `${neededH}px`;
-		drawText(canvas, text, fontSize);
+
+		drawText(canvas, text, fontSize, lineSpacing, wordSpacing, charSpacing);
 
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
@@ -40,7 +44,7 @@
 		
 		const url = canvas.toDataURL('image/png');
 		const a = document.createElement('a');
-		a.href = url;
+		a.href = url;	
 		const filename = `noise_${noisePct}_stripes_${stripesPct}_mask_${maskPct}.png`;
 		a.download = filename
 		a.click();
@@ -51,6 +55,9 @@
     $: stripes, redraw();
     $: mask, redraw();
 	$: fontSize, redraw();
+	$: lineSpacing, redraw();
+	$: charSpacing, redraw();
+	$: wordSpacing, redraw();
 
 	onMount(() => {
 		redraw();
