@@ -7,7 +7,7 @@ warnings.filterwarnings("ignore")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 # Relative pathing
-RENDERS_DIR = BASE_DIR / "data" / "renders"
+RENDERS_DIR = BASE_DIR / "data" / "binarized"
 RESULTS_DIR = BASE_DIR / "results" / "easyOCR"
 
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
