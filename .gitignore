@@ -22,7 +22,8 @@ activate.bat
 
 evaluation/.venv/
 evaluation/data/renders/*
-evaluation/data/binarized/* 
+evaluation/data/binarized/
+evaluation/data/preprocessing/
 evaluation/results/easyOCR/*
 
 # Gitkeeps
@@ -30,6 +31,8 @@ evaluation/results/easyOCR/*
 !evaluation/results/.gitkeep
 !evaluation/data/renders/.gitkeep
 !evaluation/data/binarized/.gitkeep
+
+
 
 
 # Vite
