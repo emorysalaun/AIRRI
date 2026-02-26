@@ -1,11 +1,9 @@
 from pathlib import Path
 import easyocr
 import warnings
+from score import evaluate_ocr_folder
 
 warnings.filterwarnings("ignore")
-
-print("\n=== AIRRI Evaluation Pipeline (NO BINARIZATION) ===\n")
-
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -59,7 +57,8 @@ def sort_reading_order(results, line_threshold=25):
 # Step — EasyOCR (runs directly on renders/)
 # ---------------------------------------------------
 
-print("Step: Running EasyOCR on renders (no preprocessing)...\n")
+print("\n=== AIRRI Evaluation Pipeline ===\n")
+print("[1/2] EasyOCR Inference")
 
 reader = easyocr.Reader(["en"], gpu=False)
 
@@ -69,19 +68,48 @@ render_images = sorted([
 ])
 
 for image_path in render_images:
-    print("=" * 50)
-    print("OCR FILE:", image_path.name)
-    print("=" * 50)
+    print(f"  • {image_path.name}")
 
     result = reader.readtext(str(image_path))
     texts = sort_reading_order(result)
 
     ocr_joined = " ".join(texts)
 
-    print(ocr_joined)
-    print()
-
     output_file = RESULTS_DIR / f"{image_path.stem}.txt"
     output_file.write_text(ocr_joined, encoding="utf-8")
 
-print("\n=== Evaluation Complete ===\n")
+print(f"  Done ✓  ({len(render_images)} images)\n")
+
+
+
+GROUND_TRUTH = """The quick brown fox jumps over the lazy dog.
+
+THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG.
+
+ThE qUiCk BrOwN fOx JuMpS oVeR tHe LaZy DoG.
+"""
+
+print("[2/2] Character Accuracy Evaluation")
+
+scores = evaluate_ocr_folder(RESULTS_DIR, GROUND_TRUTH)
+
+for name, acc in scores.items():
+    print(f"  {name:<45} → {acc:6.2f}%")
+
+
+
+print("\nSummary")
+print("-" * 39)
+
+values = list(scores.values())
+avg = sum(values) / len(values)
+
+best_file = max(scores, key=scores.get)
+worst_file = min(scores, key=scores.get)
+
+print(f"Images evaluated : {len(scores)}")
+print(f"Average accuracy : {avg:.2f}%")
+print(f"Best result      : {best_file} ({scores[best_file]:.2f}%)")
+print(f"Worst result     : {worst_file} ({scores[worst_file]:.2f}%)")
+
+print("\nPipeline complete ✓\n")
