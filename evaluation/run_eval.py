@@ -15,7 +15,6 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def sort_reading_order(results, line_threshold=25):
-    # Convert OCR output to centers
     boxes = []
     for bbox, text, conf in results:
         xs = [p[0] for p in bbox]
@@ -78,7 +77,7 @@ for image_path in render_images:
     output_file = RESULTS_DIR / f"{image_path.stem}.txt"
     output_file.write_text(ocr_joined, encoding="utf-8")
 
-print(f"  Done ✓  ({len(render_images)} images)\n")
+print(f"  Done   ({len(render_images)} images)\n")
 
 
 
@@ -112,4 +111,4 @@ print(f"Average accuracy : {avg:.2f}%")
 print(f"Best result      : {best_file} ({scores[best_file]:.2f}%)")
 print(f"Worst result     : {worst_file} ({scores[worst_file]:.2f}%)")
 
-print("\nPipeline complete ✓\n")
+print("\nPipeline complete.\n")
