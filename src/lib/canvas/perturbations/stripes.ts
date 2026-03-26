@@ -5,8 +5,8 @@ export function drawStripes(
   amount: number,
   stripeWidth: number = 8,
   gapWidth: number = 8,
-  angleDeg: number = 45,
-  color: string = 'rgba(255,255,255,0.12)'
+  color: string = 'rgba(255,255,255,0.12)',
+  stripeAngle: number = 45
 ) {
   const distanceBetweenStripes = stripeWidth + gapWidth;
   if (distanceBetweenStripes <= 0) return;
@@ -32,7 +32,7 @@ export function drawStripes(
   const cx = w / 2;
   const cy = h / 2;
   ctx.translate(cx, cy);
-  ctx.rotate((angleDeg * Math.PI) / 180);
+  ctx.rotate((stripeAngle * Math.PI) / 180);
   ctx.translate(-cx, -cy);
 
   ctx.fillStyle = pattern;

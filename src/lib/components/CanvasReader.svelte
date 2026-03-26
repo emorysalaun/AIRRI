@@ -37,7 +37,7 @@
 		
 			// Apply perturbations.
 			if (noise > 0) drawNoise(ctx, rect.width, rect.height, noise, color);
-			if (stripes > 0) drawStripes(ctx, rect.width, rect.height, stripes, 8, 8, 45, color);	
+			if (stripes > 0) drawStripes(ctx, rect.width, rect.height, stripes, 8, 8, color, stripeAngle);	
 		}
 
 		export function exportPng(){
@@ -78,6 +78,7 @@
 		$: wordSpacing, redraw();
 		$: perturbationColor, redraw();
 		$: perturbationAlpha, redraw();
+		$: stripeAngle, redraw();
 
 		onMount(() => {
 			redraw();
