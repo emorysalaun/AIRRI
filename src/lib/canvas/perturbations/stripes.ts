@@ -52,7 +52,7 @@ export function drawBetweenLineStripes(
 	amount: number,
 	color: string = "rgba(0,0,0,1)"
 ) {
-	if (lineSpacing <= 0 || lineYs.length < 2) return;
+	if ( lineYs.length < 2) return;
 
 	ctx.save();
 	ctx.globalAlpha = amount;
@@ -60,7 +60,7 @@ export function drawBetweenLineStripes(
 
 	for (let i = 0; i < lineYs.length - 1; i++) {
 		const gapY = lineYs[i] + baseLineHeight;
-		const gapHeight = lineSpacing;
+		const gapHeight = lineSpacing + 4;
 
 		if (gapHeight > 0) {
 			ctx.fillRect(0, gapY, w, gapHeight);
