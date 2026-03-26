@@ -19,6 +19,8 @@
 		export let perturbationColor = '#000000';
 		export let perturbationAlpha = 1;
 
+		export let stripeAngle = 45;
+
 		function redraw() {
 			if (!canvas) return;
 
