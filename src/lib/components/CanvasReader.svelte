@@ -19,6 +19,8 @@
 		export let stripeAngle = 45;
 		export let stripeMode: 'global' | 'between-lines' = 'global';
 
+		export let opacityJitter = 0;
+
 		let lastHeight = -1;
 
 		function redraw() {
@@ -30,7 +32,15 @@
 				lastHeight = neededH;
 			}
 
-			const layout = drawText(canvas, text, fontSize, lineSpacing, wordSpacing, charSpacing);
+			const layout = drawText(
+				canvas,
+				text,
+				fontSize,
+				lineSpacing,
+				wordSpacing,
+				charSpacing,
+				opacityJitter
+			);
 			if (!layout) return;
 
 			const ctx = canvas.getContext('2d');
@@ -51,8 +61,8 @@
 						ctx,
 						rect.width,
 						layout.lineYs,
-						layout.baseLineHeight,
-						lineSpacing,
+						fontSize,
+						layout.lineHeight,
 						stripes,
 						color
 					);
@@ -65,6 +75,7 @@
 
 			const noisePct = Math.round(noise * 100);
 			const stripesPct = Math.round(stripes * 100);
+			const opacityPct = Math.round(opacityJitter * 100);
 
 			const url = canvas.toDataURL('image/png');
 			const a = document.createElement('a');
@@ -76,7 +87,8 @@
 				`_cs=${charSpacing}` +
 				`_ws=${wordSpacing}` +
 				`_noise=${noisePct}` +
-				`_stripes=${stripesPct}.png`;
+				`_stripes=${stripesPct}` +
+				`_oj=${opacityPct}.png`;
 
 			a.download = filename;
 			a.click();
@@ -92,6 +104,7 @@
 		$: perturbationColor, redraw();
 		$: stripeAngle, redraw();
 		$: stripeMode, redraw();
+		$: opacityJitter, redraw();
 
 		onMount(() => {
 			redraw();

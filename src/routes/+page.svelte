@@ -17,6 +17,8 @@
 	let stripeAngle = 45;
 	let stripeMode: 'global' | 'between-lines' = 'global';
 
+	let opacityJitter = 0;
+
 	function clearPerturbations() {
 		noise = 0;
 		stripes = 0;
@@ -27,6 +29,7 @@
 		perturbationColor = '#000000';
 		stripeAngle = 45;
 		stripeMode = 'global';
+		opacityJitter = 0;
 	}
 
 	function exportAsPng() {
@@ -76,6 +79,22 @@
 						<label for="perturbationColor">Perturbation Color</label>
 						<input id="perturbationColor" type="color" bind:value={perturbationColor} />
 					</div>
+
+					<div class="subsection">
+						<h4>Opacity Effects</h4>
+
+						<div class="row">
+							<label for="opacityJitter">Opacity Jitter: {opacityJitter.toFixed(2)}</label>
+							<input
+								id="opacityJitter"
+								type="range"
+								min="0"
+								max="1"
+								step="0.01"
+								bind:value={opacityJitter}
+							/>
+						</div>
+					</div>
 				</div>
 			</details>
 
@@ -124,6 +143,7 @@
 		{perturbationColor}
 		{stripeAngle}
 		{stripeMode}
+		{opacityJitter}
 	/>
 </div>
 
@@ -172,6 +192,17 @@
 		flex-direction: column;
 		gap: 10px;
 		margin-top: 10px;
+	}
+
+	.subsection {
+		border-top: 1px solid #eee;
+		padding-top: 10px;
+		margin-top: 4px;
+	}
+
+	.subsection h4 {
+		margin: 0 0 8px 0;
+		font-size: 0.95rem;
 	}
 
 	.row {

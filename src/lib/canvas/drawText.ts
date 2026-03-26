@@ -23,27 +23,27 @@
 
 	const spaceW = ctx.measureText(" ").width;
 
-	function breakLongWord(word: string) {
-		let chunk = "";
+	function breakLongWord(word: string): string[] {
+		const chunks: string[] = [];
+		let chunk = '';
 		let chunkW = 0;
 
 		for (const ch of word) {
-		const chW = ctx.measureText(ch).width;
-		const nextW = chunk === "" ? chW : chunkW + charSpacing + chW;
+			const chW = ctx.measureText(ch).width;
+			const nextW = chunk === '' ? chW : chunkW + charSpacing + chW;
 
-		if (nextW <= maxWidth) {
-			chunk += ch;
-			chunkW = nextW;
-		} else {
-			if (chunk.length > 0) lines.push(chunk);
-
-			// start new chunk with this character
-			chunk = ch;
-			chunkW = chW;
-		}
+			if (nextW <= maxWidth) {
+				chunk += ch;
+				chunkW = nextW;
+			} else {
+				if (chunk.length > 0) chunks.push(chunk);
+				chunk = ch;
+				chunkW = chW;
+			}
 		}
 
-		if (chunk.length > 0) lines.push(chunk);
+		if (chunk.length > 0) chunks.push(chunk);
+		return chunks;
 	}
 
 	for (const paragraph of paragraphs) {
@@ -86,7 +86,19 @@
 			currentWords = [word];
 			currentW = wordW;
 		} else {
-			breakLongWord(word);
+			const chunks = breakLongWord(word);
+
+			for (let i = 0; i < chunks.length; i++) {
+				const chunk = chunks[i];
+				const chunkW = measureWordWidth(ctx, chunk, charSpacing);
+
+				if (i < chunks.length - 1) {
+					lines.push(chunk);
+				} else {
+					currentWords = [chunk];
+					currentW = chunkW;
+				}
+			}
 		}
 		}
 
@@ -123,28 +135,31 @@
 		x: number,
 		y: number,
 		charSpacing: number,
-		wordSpacing: number
-		) {
+		wordSpacing: number,
+		opacityJitter: number = 0
+	) {
 		const spaceW = ctx.measureText(" ").width;
 		const words = line.split(" ");
 
 		for (let wi = 0; wi < words.length; wi++) {
 			const word = words[wi];
 
-			if (charSpacing <= 0) {
-			ctx.fillText(word, x, y);
-			x += ctx.measureText(word).width;
-			} else {
 			for (let i = 0; i < word.length; i++) {
 				const ch = word[i];
+
+				const alpha = 1 - Math.random() * opacityJitter * 0.5;
+				ctx.fillStyle = `rgba(17,17,17,${alpha})`;
+
 				ctx.fillText(ch, x, y);
 				x += ctx.measureText(ch).width;
-				if (i < word.length - 1) x += charSpacing;
-			}
+
+				if (i < word.length - 1) {
+					x += charSpacing;
+				}
 			}
 
 			if (wi < words.length - 1) {
-			x += spaceW + wordSpacing;
+				x += spaceW + wordSpacing;
 			}
 		}
 	}
@@ -164,7 +179,8 @@
 		fontSize: number,
 		lineSpacing: number = 0,
 		wordSpacing: number = 0,
-		charSpacing: number = 0
+		charSpacing: number = 0,
+		opacityJitter: number = 0
 	): TextLayout | undefined {
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
@@ -196,7 +212,7 @@
 		let y = padding;
 		for (const line of lines) {
 			lineYs.push(y);
-			drawLineWithSpacing(ctx, line, padding, y, charSpacing, wordSpacing);
+			drawLineWithSpacing(ctx, line, padding, y, charSpacing, wordSpacing, opacityJitter);
 			y += lineHeight;
 		}
 
