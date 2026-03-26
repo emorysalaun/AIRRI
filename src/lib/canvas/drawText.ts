@@ -149,6 +149,14 @@
 		}
 	}
 
+	export type TextLayout = {
+		lines: string[];
+		lineYs: number[];
+		padding: number;
+		lineHeight: number;
+		baseLineHeight: number;
+	};
+
 
 	export function drawText(
 		canvas: HTMLCanvasElement,
@@ -157,21 +165,18 @@
 		lineSpacing: number = 0,
 		wordSpacing: number = 0,
 		charSpacing: number = 0
-		) {
+	): TextLayout | undefined {
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
 
 		const dpr = window.devicePixelRatio || 1;
 		const rect = canvas.getBoundingClientRect();
 
-		// Drawing buffer size.
 		canvas.width = Math.floor(rect.width * dpr);
 		canvas.height = Math.floor(rect.height * dpr);
 
-		// draw using CSS pixels
 		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-		// Clear in CSS pixels
 		ctx.fillStyle = "#fff";
 		ctx.fillRect(0, 0, rect.width, rect.height);
 
@@ -186,10 +191,20 @@
 		const usableWidth = rect.width - padding * 2;
 		const lines = wrapLines(ctx, text, usableWidth, wordSpacing, charSpacing);
 
+		const lineYs: number[] = [];
+
 		let y = padding;
 		for (const line of lines) {
-			if (y > rect.height - padding) break;
+			lineYs.push(y);
 			drawLineWithSpacing(ctx, line, padding, y, charSpacing, wordSpacing);
 			y += lineHeight;
 		}
+
+		return {
+			lines,
+			lineYs,
+			padding,
+			lineHeight,
+			baseLineHeight
+		};
 	}

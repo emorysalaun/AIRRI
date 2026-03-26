@@ -2,7 +2,8 @@
 		import { onMount } from 'svelte';
 		import { drawText, measureTextHeight } from '$lib/canvas/drawText';
 		import {drawNoise} from '$lib/canvas/perturbations/noise';
-		import {drawStripes} from '$lib/canvas/perturbations/stripes';
+		//import {drawStripes} from '$lib/canvas/perturbations/stripes';
+		import {drawBetweenLineStripes} from '$lib/canvas/perturbations/stripes';
 
 		export let text = '';
 		let canvas: HTMLCanvasElement;
@@ -27,17 +28,29 @@
 			const neededH = measureTextHeight(canvas, text, fontSize, lineSpacing, wordSpacing, charSpacing);
 			canvas.style.height = `${neededH}px`;
 
-			drawText(canvas, text, fontSize, lineSpacing, wordSpacing, charSpacing);
-
+			const layout = drawText(canvas, text, fontSize, lineSpacing, wordSpacing, charSpacing);
 			const ctx = canvas.getContext('2d');
 			if (!ctx) return;
 
 			const rect = canvas.getBoundingClientRect();
 			const color = hexToRgba(perturbationColor, perturbationAlpha);
-		
+			
+
+			if (!layout) return;
 			// Apply perturbations.
 			if (noise > 0) drawNoise(ctx, rect.width, rect.height, noise, color);
-			if (stripes > 0) drawStripes(ctx, rect.width, rect.height, stripes, 8, 8, color, stripeAngle);	
+			//if (stripes > 0) drawStripes(ctx, rect.width, rect.height, stripes, 8, 8, color, stripeAngle);	
+			if (stripes > 0) {
+			drawBetweenLineStripes(
+				ctx,
+				rect.width,
+				layout.lineYs,
+				layout.baseLineHeight,
+				lineSpacing,
+				stripes,
+				color
+			);
+		}
 		}
 
 		export function exportPng(){

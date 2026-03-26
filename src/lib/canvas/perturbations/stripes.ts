@@ -43,3 +43,29 @@ export function drawStripes(
 
   ctx.restore();
 }
+export function drawBetweenLineStripes(
+	ctx: CanvasRenderingContext2D,
+	w: number,
+	lineYs: number[],
+	baseLineHeight: number,
+	lineSpacing: number,
+	amount: number,
+	color: string = "rgba(0,0,0,1)"
+) {
+	if (lineSpacing <= 0 || lineYs.length < 2) return;
+
+	ctx.save();
+	ctx.globalAlpha = amount;
+	ctx.fillStyle = color;
+
+	for (let i = 0; i < lineYs.length - 1; i++) {
+		const gapY = lineYs[i] + baseLineHeight;
+		const gapHeight = lineSpacing;
+
+		if (gapHeight > 0) {
+			ctx.fillRect(0, gapY, w, gapHeight);
+		}
+	}
+
+	ctx.restore();
+}
