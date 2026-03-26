@@ -9,7 +9,6 @@
 
 		export let noise = 0;
 		export let stripes = 0;
-		export let mask = 0;
 
 
 		export let fontSize = 16;
@@ -44,7 +43,6 @@
 
 			const noisePct = Math.round(noise * 100);
 			const stripesPct = Math.round(stripes * 100);
-			const maskPct = Math.round(mask * 100);
 			
 			const url = canvas.toDataURL('image/png');
 			const a = document.createElement('a');
@@ -55,8 +53,7 @@
 				`_cs=${charSpacing}` +
 				`_ws=${wordSpacing}` +
 				`_noise=${noisePct}` +
-				`_stripes=${stripesPct}` +
-				`_mask=${maskPct}.png`;
+				`_stripes=${stripesPct}`;
 			a.download = filename
 			a.click();
 		}
@@ -73,7 +70,6 @@
 		$: text, redraw();
 		$: noise, redraw();
 		$: stripes, redraw();
-		$: mask, redraw();
 		$: fontSize, redraw();
 		$: lineSpacing, redraw();
 		$: charSpacing, redraw();

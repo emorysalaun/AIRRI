@@ -5,12 +5,10 @@
 	let text = '';
 	let reader: CanvasReader | null = null;
 
-	// 0..1 intensities
 	let noise = 0;
 	let stripes = 0;
 	let mask = 0;
 
-	// Font stuff
 	let fontSize = 16;
 	let lineSpacing = 0;
 	let charSpacing = 0;
@@ -26,13 +24,13 @@
 		lineSpacing = 0;
 		charSpacing = 0;
 		wordSpacing = 0;
-		fontSize = 16;	
+		fontSize = 16;
 	}
 
 	function exportAsPng() {
 		console.log('reader:', reader);
-    	reader?.exportPng();
-  }
+		reader?.exportPng();
+	}
 </script>
 
 <svelte:head>
@@ -41,9 +39,9 @@
 
 <div class="grid">
 	<div class="left">
-			<div class="inputWrap">
-			  <TextInput bind:value={text} />
-		  </div>
+		<div class="inputWrap">
+			<TextInput bind:value={text} />
+		</div>
 
 		<div class="controls">
 			<div class="row">
@@ -57,13 +55,10 @@
 			</div>
 
 			<div class="row">
-				<label for="mask">Mask: {mask.toFixed(2)}</label>
-				<input id="mask" type="range" min="0" max="1" step="0.01" bind:value={mask} />
-			</div>
-			<div class="row">
 				<label for="fontSize">Font Size: {fontSize.toFixed(2)}</label>
 				<input id="fontSize" type="range" min="1" max="48" step="1" bind:value={fontSize} />
 			</div>
+
 			<div class="row">
 				<label for="lineSpacing">Line Spacing: {lineSpacing.toFixed(0)}px</label>
 				<input id="lineSpacing" type="range" min="0" max="40" step="1" bind:value={lineSpacing} />
@@ -96,8 +91,10 @@
 				/>
 			</div>
 
-			<button type="button" on:click={clearPerturbations}>Clear</button>
-			<button type="button" on:click={exportAsPng}>Export</button>
+			<div class="buttonRow">
+				<button type="button" on:click={clearPerturbations}>Clear</button>
+				<button type="button" on:click={exportAsPng}>Export</button>
+			</div>
 		</div>
 	</div>
 
@@ -106,14 +103,14 @@
 		{text}
 		{noise}
 		{stripes}
-		{mask}
 		{fontSize}
 		{lineSpacing}
 		{charSpacing}
 		{wordSpacing}
 		{perturbationColor}
 		{perturbationAlpha}
-	/></div>
+	/>
+</div>
 
 <style>
 	.grid {
@@ -121,8 +118,9 @@
 		grid-template-columns: 1fr 1fr;
 		gap: 16px;
 		padding: 16px;
-		height: calc(100vh - 32px);
+		height: 100vh;
 		box-sizing: border-box;
+		overflow: hidden;
 	}
 
 	.left {
@@ -130,6 +128,7 @@
 		flex-direction: column;
 		gap: 12px;
 		min-height: 0;
+		overflow-y: auto;
 	}
 
 	.controls {
@@ -139,6 +138,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
+		flex: 0 0 auto;
 	}
 
 	.row {
@@ -147,20 +147,24 @@
 		gap: 6px;
 	}
 
+	.buttonRow {
+		display: flex;
+		gap: 8px;
+	}
+
 	input[type='range'] {
 		width: 100%;
 	}
 
+	.inputWrap {
+		flex: 0 0 auto;
+		min-height: 220px;
+	}
 
-.inputWrap {
-	flex: 1;
-	min-height: 0;
-}
-
-.inputWrap :global(textarea) {
-	height: 100%;
-	width: 100%;
-	resize: none;
-	box-sizing: border-box;
-}
+	.inputWrap :global(textarea) {
+		height: 220px;
+		width: 100%;
+		resize: vertical;
+		box-sizing: border-box;
+	}
 </style>
