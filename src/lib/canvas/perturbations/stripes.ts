@@ -59,8 +59,8 @@ export function drawBetweenLineStripes(
 	ctx.fillStyle = color;
 
 	for (let i = 0; i < lineYs.length - 1; i++) {
-		const gapY = lineYs[i] + baseLineHeight;
-		const gapHeight = lineSpacing + 4;
+		const gapY = lineYs[i] + baseLineHeight -6  ;
+		const gapHeight = lineSpacing + 8;
 
 		if (gapHeight > 0) {
 			ctx.fillRect(0, gapY, w, gapHeight);
