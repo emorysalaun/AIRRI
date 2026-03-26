@@ -2,13 +2,14 @@ export function drawNoise(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
-  amount: number
+  amount: number,
+  color: string = '#000000'
 ) {
   ctx.save();
   ctx.globalAlpha = amount;
-  ctx.fillStyle = '#000';
+  ctx.fillStyle = color;
 
-  const dots = Math.floor((w * h) / 625*amount);
+  const dots = Math.floor((w * h) / 625 * amount);
   for (let i = 0; i < dots; i++) {
     const x = Math.random() * w;
     const y = Math.random() * h;

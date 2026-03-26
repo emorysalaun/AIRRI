@@ -16,6 +16,8 @@
 	let charSpacing = 0;
 	let wordSpacing = 0;
 
+	let perturbationColor = '#000000';
+	let perturbationAlpha = 1;
 
 	function clearPerturbations() {
 		noise = 0;
@@ -24,7 +26,7 @@
 		lineSpacing = 0;
 		charSpacing = 0;
 		wordSpacing = 0;
-		fontSize = 16;
+		fontSize = 16;	
 	}
 
 	function exportAsPng() {
@@ -77,15 +79,41 @@
 				<input id="wordSpacing" type="range" min="0" max="30" step="1" bind:value={wordSpacing} />
 			</div>
 
+			<div class="row">
+				<label for="perturbationColor">Perturbation Color</label>
+				<input id="perturbationColor" type="color" bind:value={perturbationColor} />
+			</div>
 
+			<div class="row">
+				<label for="perturbationAlpha">Perturbation Opacity: {perturbationAlpha.toFixed(2)}</label>
+				<input
+					id="perturbationAlpha"
+					type="range"
+					min="0"
+					max="1"
+					step="0.01"
+					bind:value={perturbationAlpha}
+				/>
+			</div>
 
 			<button type="button" on:click={clearPerturbations}>Clear</button>
 			<button type="button" on:click={exportAsPng}>Export</button>
 		</div>
 	</div>
 
-	<CanvasReader bind:this={reader} {text} {noise} {stripes} {mask} {fontSize} {lineSpacing} {charSpacing} {wordSpacing}/>
-</div>
+	<CanvasReader
+		bind:this={reader}
+		{text}
+		{noise}
+		{stripes}
+		{mask}
+		{fontSize}
+		{lineSpacing}
+		{charSpacing}
+		{wordSpacing}
+		{perturbationColor}
+		{perturbationAlpha}
+	/></div>
 
 <style>
 	.grid {
@@ -125,11 +153,10 @@
 
 
 .inputWrap {
-	flex: 1;        /* <-- THIS is the fix */
-	min-height: 0;  /* <-- required in constrained layouts */
+	flex: 1;
+	min-height: 0;
 }
 
-/* If TextInput uses a textarea (very likely) */
 .inputWrap :global(textarea) {
 	height: 100%;
 	width: 100%;

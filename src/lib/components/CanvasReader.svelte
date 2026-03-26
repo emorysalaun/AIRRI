@@ -17,6 +17,9 @@
 		export let charSpacing = 0;
 		export let wordSpacing = 0;
 
+		export let perturbationColor = '#000000';
+		export let perturbationAlpha = 1;
+
 		function redraw() {
 			if (!canvas) return;
 
@@ -29,10 +32,11 @@
 			if (!ctx) return;
 
 			const rect = canvas.getBoundingClientRect();
+			const color = hexToRgba(perturbationColor, perturbationAlpha);
 		
 			// Apply perturbations.
-			if (noise > 0) drawNoise(ctx, rect.width, rect.height, noise);
-			if (stripes > 0) drawStripes(ctx, rect.width, rect.height, stripes, 8, 8, 45, 'rgba(0, 0, 0, 1)');	
+			if (noise > 0) drawNoise(ctx, rect.width, rect.height, noise, color);
+			if (stripes > 0) drawStripes(ctx, rect.width, rect.height, stripes, 8, 8, 45, color);	
 		}
 
 		export function exportPng(){
@@ -57,6 +61,15 @@
 			a.click();
 		}
 
+		
+		function hexToRgba(hex: string, alpha: number) {
+			const clean = hex.replace('#', '');
+			const r = parseInt(clean.slice(0, 2), 16);
+			const g = parseInt(clean.slice(2, 4), 16);
+			const b = parseInt(clean.slice(4, 6), 16);
+			return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+		}
+
 		$: text, redraw();
 		$: noise, redraw();
 		$: stripes, redraw();
@@ -65,6 +78,8 @@
 		$: lineSpacing, redraw();
 		$: charSpacing, redraw();
 		$: wordSpacing, redraw();
+		$: perturbationColor, redraw();
+		$: perturbationAlpha, redraw();
 
 		onMount(() => {
 			redraw();
