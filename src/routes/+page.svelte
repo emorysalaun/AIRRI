@@ -7,7 +7,6 @@
 
 	let noise = 0;
 	let stripes = 0;
-	let mask = 0;
 
 	let fontSize = 16;
 	let lineSpacing = 0;
@@ -15,24 +14,22 @@
 	let wordSpacing = 0;
 
 	let perturbationColor = '#000000';
-	let perturbationAlpha = 1;
 	let stripeAngle = 45;
+	let stripeMode: 'global' | 'between-lines' = 'global';
 
 	function clearPerturbations() {
 		noise = 0;
 		stripes = 0;
-		mask = 0;
+		fontSize = 16;
 		lineSpacing = 0;
 		charSpacing = 0;
 		wordSpacing = 0;
-		fontSize = 16;
 		perturbationColor = '#000000';
-		perturbationAlpha = 1;
 		stripeAngle = 45;
+		stripeMode = 'global';
 	}
 
 	function exportAsPng() {
-		console.log('reader:', reader);
 		reader?.exportPng();
 	}
 </script>
@@ -63,6 +60,14 @@
 					</div>
 
 					<div class="row">
+						<label for="stripeMode">Stripe Mode</label>
+						<select id="stripeMode" bind:value={stripeMode}>
+							<option value="global">Global</option>
+							<option value="between-lines">Between Lines</option>
+						</select>
+					</div>
+
+					<div class="row">
 						<label for="stripeAngle">Stripe Angle: {stripeAngle.toFixed(0)}°</label>
 						<input id="stripeAngle" type="range" min="0" max="180" step="1" bind:value={stripeAngle} />
 					</div>
@@ -70,18 +75,6 @@
 					<div class="row">
 						<label for="perturbationColor">Perturbation Color</label>
 						<input id="perturbationColor" type="color" bind:value={perturbationColor} />
-					</div>
-
-					<div class="row">
-						<label for="perturbationAlpha">Perturbation Opacity: {perturbationAlpha.toFixed(2)}</label>
-						<input
-							id="perturbationAlpha"
-							type="range"
-							min="0"
-							max="1"
-							step="0.01"
-							bind:value={perturbationAlpha}
-						/>
 					</div>
 				</div>
 			</details>
@@ -129,8 +122,8 @@
 		{charSpacing}
 		{wordSpacing}
 		{perturbationColor}
-		{perturbationAlpha}
 		{stripeAngle}
+		{stripeMode}
 	/>
 </div>
 
@@ -192,7 +185,8 @@
 		gap: 8px;
 	}
 
-	input[type='range'] {
+	input[type='range'],
+	select {
 		width: 100%;
 	}
 

@@ -9,7 +9,7 @@ export function drawNoise(
   ctx.globalAlpha = amount;
   ctx.fillStyle = color;
 
-  const dots = Math.floor((w * h) / 625 * amount);
+  const dots = Math.floor(((w * h) / 625) * amount);
   for (let i = 0; i < dots; i++) {
     const x = Math.random() * w;
     const y = Math.random() * h;

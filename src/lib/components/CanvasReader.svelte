@@ -1,9 +1,8 @@
 	<script lang="ts">
 		import { onMount } from 'svelte';
 		import { drawText, measureTextHeight } from '$lib/canvas/drawText';
-		import {drawNoise} from '$lib/canvas/perturbations/noise';
-		//import {drawStripes} from '$lib/canvas/perturbations/stripes';
-		import {drawBetweenLineStripes} from '$lib/canvas/perturbations/stripes';
+		import { drawNoise } from '$lib/canvas/perturbations/noise';
+		import { drawStripes, drawBetweenLineStripes } from '$lib/canvas/perturbations/stripes';
 
 		export let text = '';
 		let canvas: HTMLCanvasElement;
@@ -11,75 +10,76 @@
 		export let noise = 0;
 		export let stripes = 0;
 
-
 		export let fontSize = 16;
 		export let lineSpacing = 0;
 		export let charSpacing = 0;
 		export let wordSpacing = 0;
 
 		export let perturbationColor = '#000000';
-		export let perturbationAlpha = 1;
-
 		export let stripeAngle = 45;
+		export let stripeMode: 'global' | 'between-lines' = 'global';
+
+		let lastHeight = -1;
 
 		function redraw() {
 			if (!canvas) return;
 
 			const neededH = measureTextHeight(canvas, text, fontSize, lineSpacing, wordSpacing, charSpacing);
-			canvas.style.height = `${neededH}px`;
+			if (neededH !== lastHeight) {
+				canvas.style.height = `${neededH}px`;
+				lastHeight = neededH;
+			}
 
 			const layout = drawText(canvas, text, fontSize, lineSpacing, wordSpacing, charSpacing);
+			if (!layout) return;
+
 			const ctx = canvas.getContext('2d');
 			if (!ctx) return;
 
 			const rect = canvas.getBoundingClientRect();
-			const color = hexToRgba(perturbationColor, perturbationAlpha);
-			
+			const color = perturbationColor;
 
-			if (!layout) return;
-			// Apply perturbations.
-			if (noise > 0) drawNoise(ctx, rect.width, rect.height, noise, color);
-			//if (stripes > 0) drawStripes(ctx, rect.width, rect.height, stripes, 8, 8, color, stripeAngle);	
+			if (noise > 0) {
+				drawNoise(ctx, rect.width, rect.height, noise, color);
+			}
+
 			if (stripes > 0) {
-			drawBetweenLineStripes(
-				ctx,
-				rect.width,
-				layout.lineYs,
-				layout.baseLineHeight,
-				lineSpacing,
-				stripes,
-				color
-			);
-		}
+				if (stripeMode === 'global') {
+					drawStripes(ctx, rect.width, rect.height, stripes, 8, 8, color, stripeAngle);
+				} else {
+					drawBetweenLineStripes(
+						ctx,
+						rect.width,
+						layout.lineYs,
+						layout.baseLineHeight,
+						lineSpacing,
+						stripes,
+						color
+					);
+				}
+			}
 		}
 
-		export function exportPng(){
+		export function exportPng() {
 			if (!canvas) return;
 
 			const noisePct = Math.round(noise * 100);
 			const stripesPct = Math.round(stripes * 100);
-			
+
 			const url = canvas.toDataURL('image/png');
 			const a = document.createElement('a');
-			a.href = url;	
-				const filename =
+			a.href = url;
+
+			const filename =
 				`fs=${fontSize}` +
 				`_ls=${lineSpacing}` +
 				`_cs=${charSpacing}` +
 				`_ws=${wordSpacing}` +
 				`_noise=${noisePct}` +
-				`_stripes=${stripesPct}`;
-			a.download = filename
-			a.click();
-		}
+				`_stripes=${stripesPct}.png`;
 
-		
-		function hexToRgba(hex: string, alpha: number) {
-			const clean = hex.replace('#', '');
-			const r = parseInt(clean.slice(0, 2), 16);
-			const g = parseInt(clean.slice(2, 4), 16);
-			const b = parseInt(clean.slice(4, 6), 16);
-			return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+			a.download = filename;
+			a.click();
 		}
 
 		$: text, redraw();
@@ -90,21 +90,17 @@
 		$: charSpacing, redraw();
 		$: wordSpacing, redraw();
 		$: perturbationColor, redraw();
-		$: perturbationAlpha, redraw();
 		$: stripeAngle, redraw();
+		$: stripeMode, redraw();
 
 		onMount(() => {
 			redraw();
-			const ro = new ResizeObserver(() => redraw());
-			ro.observe(canvas);
-			return () => ro.disconnect();
 		});
 	</script>
 
 	<section class="panel">
 		<h2>Canvas Output</h2>
 		<div class="scroll">
-			<!-- assings the canvas made here as the canvas variable-->
 			<canvas bind:this={canvas}></canvas>
 		</div>
 	</section>
