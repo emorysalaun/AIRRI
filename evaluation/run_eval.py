@@ -70,9 +70,8 @@ render_images = sorted([
 for image_path in render_images:
     print(f"  • {image_path.name}")
 
-    result = reader.readtext(str(image_path))
-    texts = sort_reading_order(result)
-
+    result = reader.readtext(str(image_path), paragraph=True)
+    texts = [r[1] for r in result]
     ocr_joined = " ".join(texts)
 
     output_file = RESULTS_DIR / f"{image_path.stem}.txt"
@@ -82,19 +81,19 @@ print(f"  Done ✓  ({len(render_images)} images)\n")
 
 
 
-GROUND_TRUTH = """The quick brown fox jumps over the lazy dog.
-
-THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG.
-
-ThE qUiCk BrOwN fOx JuMpS oVeR tHe LaZy DoG.
-"""
+GROUND_TRUTH = """Home at Mount Vernon the candles in the windows of George Washington's home at Mount Vernon shone brightly on Christmas Eve. This Christmas Eve, though, was different. One month earlier the United States and Great Britain had signed a peace treaty ending the Revolutionary War. It was Christmastime when George Washington returned to his home. He was no longer the commander of the Continental Army. Soon after, at a dinner in New York, General Washington"""
 
 print("[2/2] Character Accuracy Evaluation")
 
 scores = evaluate_ocr_folder(RESULTS_DIR, GROUND_TRUTH)
 
 for name, acc in scores.items():
-    print(f"  {name:<45} → {acc:6.2f}%")
+    text = (RESULTS_DIR / name).read_text(encoding="utf-8")
+
+    print(f"\n{name}")
+    print("-" * 60)
+    print(text)
+    print(f"\nAccuracy → {acc:.2f}%\n")
 
 
 
