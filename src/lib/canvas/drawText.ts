@@ -147,7 +147,7 @@
 			for (let i = 0; i < word.length; i++) {
 				const ch = word[i];
 
-				const alpha = 1 - Math.random() * opacityJitter * 0.5;
+				const alpha = 1 - Math.random() * opacityJitter;
 				ctx.fillStyle = `rgba(17,17,17,${alpha})`;
 
 				ctx.fillText(ch, x, y);
