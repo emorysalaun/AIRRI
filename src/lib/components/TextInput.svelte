@@ -4,7 +4,7 @@
 
 <section class="panel">
 	<h2>Input</h2>
-	<textarea bind:value />
+	<textarea bind:value={value}></textarea>
 </section>
 
 <style>

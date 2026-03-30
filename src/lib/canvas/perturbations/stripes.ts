@@ -5,8 +5,8 @@ export function drawStripes(
   amount: number,
   stripeWidth: number = 8,
   gapWidth: number = 8,
-  angleDeg: number = 45,
-  color: string = 'rgba(255,255,255,0.12)'
+  color: string = 'rgba(255,255,255,0.12)',
+  stripeAngle: number = 45
 ) {
   const distanceBetweenStripes = stripeWidth + gapWidth;
   if (distanceBetweenStripes <= 0) return;
@@ -32,7 +32,7 @@ export function drawStripes(
   const cx = w / 2;
   const cy = h / 2;
   ctx.translate(cx, cy);
-  ctx.rotate((angleDeg * Math.PI) / 180);
+  ctx.rotate((stripeAngle * Math.PI) / 180);
   ctx.translate(-cx, -cy);
 
   ctx.fillStyle = pattern;
@@ -42,4 +42,30 @@ export function drawStripes(
   ctx.fillRect(-diag, -diag, w + diag * 2, h + diag * 2);
 
   ctx.restore();
+}
+export function drawBetweenLineStripes(
+	ctx: CanvasRenderingContext2D,
+	w: number,
+	lineYs: number[],
+	baseLineHeight: number,
+	lineSpacing: number,
+	amount: number,
+	color: string = "rgba(0,0,0,1)"
+) {
+	if ( lineYs.length < 2) return;
+
+	ctx.save();
+	ctx.globalAlpha = amount;
+	ctx.fillStyle = color;
+
+	for (let i = 0; i < lineYs.length - 1; i++) {
+		const gapY = lineYs[i] + baseLineHeight - 3  ;
+		const gapHeight = lineSpacing-15;
+
+		if (gapHeight > 0) {
+			ctx.fillRect(0, gapY, w, gapHeight);
+		}
+	}
+
+	ctx.restore();
 }
