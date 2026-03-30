@@ -12,6 +12,8 @@ RENDERS_DIR = DATA_DIR / "renders"
 RESULTS_DIR = BASE_DIR / "results" / "easyocr"
 
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+for f in RESULTS_DIR.glob("*.txt"):
+    f.unlink()
 
 
 def sort_reading_order(results, line_threshold=25):
