@@ -69,7 +69,7 @@ def main() -> None:
     tesseract_count = run_tesseract_folder(
         input_dir=RENDERS_DIR,
         output_dir=TESSERACT_RESULTS_DIR,
-        tesseract_cmd=r"C:\Program Files\Tesseract-OCR\tesseract.exe",  # only if needed
+        tesseract_cmd=r"C:\Program Files\Tesseract-OCR\tesseract.exe",
         lang="eng",
         psm=6,
         oem=3,
