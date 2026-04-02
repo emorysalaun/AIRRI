@@ -2,6 +2,8 @@ from pathlib import Path
 import warnings
 
 from engines.easyocr_engine import run_easyocr_folder
+from engines.tesseract_engine import run_tesseract_folder
+
 from score import evaluate_ocr_folder
 
 
@@ -14,6 +16,7 @@ RENDERS_DIR = DATA_DIR / "renders"
 
 RESULTS_DIR = BASE_DIR / "results"
 EASYOCR_RESULTS_DIR = RESULTS_DIR / "easyocr"
+TESSERACT_RESULTS_DIR = RESULTS_DIR / "tesseract"
 
 GROUND_TRUTH = """Home at Mount Vernon the candles in the windows of George Washington's home at Mount Vernon shone brightly on Christmas Eve. This Christmas Eve, though, was different. One month earlier the United States and Great Britain had signed a peace treaty ending the Revolutionary War. It was Christmastime when George Washington returned to his home. He was no longer the commander of the Continental Army. Soon after, at a dinner in New York, General Washington"""
 
@@ -51,8 +54,8 @@ def print_engine_results(results_dir: Path, scores: dict[str, float], engine_nam
 def main() -> None:
     print("\n=== AIRRI Evaluation Pipeline ===\n")
 
-    print("[1/2] EasyOCR Inference")
-    image_count = run_easyocr_folder(
+    print("[1/4] EasyOCR Inference")
+    easyocr_count = run_easyocr_folder(
         input_dir=RENDERS_DIR,
         output_dir=EASYOCR_RESULTS_DIR,
         languages=["en"],
@@ -60,11 +63,27 @@ def main() -> None:
         paragraph=True,
         use_sorted_reading_order=False,
     )
-    print(f"  Done   ({image_count} images)\n")
+    print(f"  Done   ({easyocr_count} images)\n")
 
-    print("[2/2] Character Accuracy Evaluation")
-    scores = evaluate_ocr_folder(EASYOCR_RESULTS_DIR, GROUND_TRUTH)
-    print_engine_results(EASYOCR_RESULTS_DIR, scores, "EasyOCR")
+    print("[2/4] Tesseract Inference")
+    tesseract_count = run_tesseract_folder(
+        input_dir=RENDERS_DIR,
+        output_dir=TESSERACT_RESULTS_DIR,
+        tesseract_cmd=r"C:\Program Files\Tesseract-OCR\tesseract.exe",  # only if needed
+        lang="eng",
+        psm=6,
+        oem=3,
+        timeout=10.0,
+    )
+    print(f"  Done   ({tesseract_count} images)\n")
+
+    print("[3/4] EasyOCR Character Accuracy Evaluation")
+    easyocr_scores = evaluate_ocr_folder(EASYOCR_RESULTS_DIR, GROUND_TRUTH)
+    print_engine_results(EASYOCR_RESULTS_DIR, easyocr_scores, "EasyOCR")
+
+    print("[4/4] Tesseract Character Accuracy Evaluation")
+    tesseract_scores = evaluate_ocr_folder(TESSERACT_RESULTS_DIR, GROUND_TRUTH)
+    print_engine_results(TESSERACT_RESULTS_DIR, tesseract_scores, "Tesseract")
 
     print("\nPipeline complete.\n")
 
