@@ -85,7 +85,7 @@ def main() -> None:
     trocr_count = run_trocr_folder(
         input_dir=RENDERS_DIR,
         output_dir=TROCR_RESULTS_DIR,
-        model_name="microsoft/trocr-small-printed",
+        model_name=str(ROOT_DIR / "models" / "trocr-small-printed"),
         device=None,
         max_new_tokens=256,
     )
