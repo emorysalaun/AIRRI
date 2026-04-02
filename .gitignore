@@ -1,40 +1,55 @@
-node_modules
+# -----------------------------
+# Frontend (SvelteKit / Node)
+# -----------------------------
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
+frontend/.output/
+frontend/.vercel/
+frontend/.netlify/
+frontend/.wrangler/
 
-# Output
-.output
-.vercel
-.netlify
-.wrangler
-/.svelte-kit
-/build
+# -----------------------------
+# Python (evaluation)
+# -----------------------------
+evaluation/.venv/
+evaluation/__pycache__/
+*.pyc
 
+# -----------------------------
+# Data (shared)
+# -----------------------------
+data/renders/*
+!data/renders/.gitkeep
+data/airri.db
 
-# OS
-.DS_Store
-Thumbs.db
+# -----------------------------
+# Evaluation outputs
+# -----------------------------
+evaluation/results/*
+!evaluation/results/.gitkeep
 
-# Env
+# -----------------------------
+# Models (large files)
+# -----------------------------
+models/
+
+# -----------------------------
+# Env files
+# -----------------------------
 .env
 .env.*
 !.env.example
 !.env.test
-activate.bat
 
-evaluation/.venv/
-evaluation/data/renders/*
-evaluation/data/binarized/
-evaluation/data/preprocessing/
-evaluation/results/easyOCR/*
+# -----------------------------
+# OS junk
+# -----------------------------
+.DS_Store
+Thumbs.db
 
-# Gitkeeps
-!evaluation/results/easyOCR/.gitkeep
-!evaluation/results/.gitkeep
-!evaluation/data/renders/.gitkeep
-!evaluation/data/binarized/.gitkeep
-
-
-
-
-# Vite
+# -----------------------------
+# Vite temp
+# -----------------------------
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*

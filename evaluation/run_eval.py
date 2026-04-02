@@ -11,8 +11,9 @@ from score import evaluate_ocr_folder
 warnings.filterwarnings("ignore")
 
 BASE_DIR = Path(__file__).resolve().parent
+ROOT_DIR = BASE_DIR.parent
 
-DATA_DIR = BASE_DIR / "data"
+DATA_DIR = ROOT_DIR / "data"
 RENDERS_DIR = DATA_DIR / "renders"
 
 RESULTS_DIR = BASE_DIR / "results"
