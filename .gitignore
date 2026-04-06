@@ -34,11 +34,6 @@ evaluation/results/*
 !evaluation/results/.gitkeep
 
 # -----------------------------
-# Models (large files)
-# -----------------------------
-models/
-
-# -----------------------------
 # Env files
 # -----------------------------
 .env
