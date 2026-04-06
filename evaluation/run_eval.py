@@ -11,9 +11,8 @@ from score import evaluate_ocr_folder
 warnings.filterwarnings("ignore")
 
 BASE_DIR = Path(__file__).resolve().parent
-ROOT_DIR = BASE_DIR.parent
 
-DATA_DIR = ROOT_DIR / "data"
+DATA_DIR = BASE_DIR / "data"
 RENDERS_DIR = DATA_DIR / "renders"
 
 RESULTS_DIR = BASE_DIR / "results"
@@ -85,7 +84,7 @@ def main() -> None:
     trocr_count = run_trocr_folder(
         input_dir=RENDERS_DIR,
         output_dir=TROCR_RESULTS_DIR,
-        model_name=str(ROOT_DIR / "models" / "trocr-small-printed"),
+        model_name="microsoft/trocr-base-printed",
         device=None,
         max_new_tokens=256,
     )

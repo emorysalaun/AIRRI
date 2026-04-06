@@ -1,3 +1,7 @@
+# Root node
+node_modules/
+.svelte-kit/
+
 # -----------------------------
 # Frontend (SvelteKit / Node)
 # -----------------------------
@@ -53,3 +57,7 @@ Thumbs.db
 # -----------------------------
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+evaluation/data/renders/*
+!evaluation/data/renders/.gitkeep
+evaluation/activate.bat
