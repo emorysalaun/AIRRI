@@ -32,6 +32,10 @@ data/airri.db
 # -----------------------------
 evaluation/results/*
 !evaluation/results/.gitkeep
+!evaluation/results/easyOCR/.gitkeep
+!evaluation/results/tesseract/.gitkeep
+!evaluation/results/trocr/.gitkeep
+
 
 # -----------------------------
 # Env files
