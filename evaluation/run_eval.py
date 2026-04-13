@@ -4,7 +4,7 @@ import warnings
 
 from engines.easyocr_engine import run_easyocr_folder
 from engines.tesseract_engine import run_tesseract_folder
-from engines.trocr_engine import run_trocr_folder
+from engines.gotocr_engine import run_gotocr_folder
 
 from score import evaluate_ocr_folder_with_manifest
 
@@ -21,7 +21,7 @@ RESULTS_DIR = BASE_DIR / "results"
 
 EASYOCR_RESULTS_DIR = RESULTS_DIR / "easyocr"
 TESSERACT_RESULTS_DIR = RESULTS_DIR / "tesseract"
-TROCR_RESULTS_DIR = RESULTS_DIR / "trocr"
+GOTOCR_RESULTS_DIR = RESULTS_DIR / "gotocr"
 
 
 def load_manifest(manifest_path: Path) -> list[dict]:
@@ -97,15 +97,15 @@ def main() -> None:
     )
     print(f"  Done   ({tesseract_count} images)\n")
 
-    # print("[3/6] TrOCR Inference")
-    # trocr_count = run_trocr_folder(
-    #     input_dir=RENDERS_DIR,
-    #     output_dir=TROCR_RESULTS_DIR,
-    #     model_name="microsoft/trocr-base-printed",
-    #     device=None,
-    #     max_new_tokens=256,
-    # )
-    # print(f"  Done   ({trocr_count} images)\n")
+    print("[3/6] GOT-OCR2 Inference")
+    gotocr_count = run_gotocr_folder(
+        input_dir=RENDERS_DIR,
+        output_dir=GOTOCR_RESULTS_DIR,
+        model_name="stepfun-ai/GOT-OCR-2.0-hf",
+        device=None,
+        max_new_tokens=1024,
+    )
+    print(f"  Done   ({gotocr_count} images)\n")
 
     print("[4/6] EasyOCR Character Accuracy Evaluation")
     easyocr_scores = evaluate_ocr_folder_with_manifest(EASYOCR_RESULTS_DIR, manifest)
@@ -115,9 +115,9 @@ def main() -> None:
     tesseract_scores = evaluate_ocr_folder_with_manifest(TESSERACT_RESULTS_DIR, manifest)
     print_engine_results(TESSERACT_RESULTS_DIR, tesseract_scores, "Tesseract")
 
-    # print("[6/6] TrOCR Character Accuracy Evaluation")
-    # trocr_scores = evaluate_ocr_folder_with_manifest(TROCR_RESULTS_DIR, manifest)
-    # print_engine_results(TROCR_RESULTS_DIR, trocr_scores, "TrOCR")
+    print("[6/6] GOT-OCR2 Character Accuracy Evaluation")
+    gotocr_scores = evaluate_ocr_folder_with_manifest(GOTOCR_RESULTS_DIR, manifest)
+    print_engine_results(GOTOCR_RESULTS_DIR, gotocr_scores, "GOT-OCR2")
 
     print("\nPipeline complete.\n")
 
