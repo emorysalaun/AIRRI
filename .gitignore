@@ -60,3 +60,9 @@ vite.config.ts.timestamp-*
 evaluation/data/renders/*
 !evaluation/data/renders/.gitkeep
 evaluation/activate.bat
+
+# -----------------------------
+# Backend Data
+# -----------------------------
+backend/data/*
+!backend/data/.gitkeep
