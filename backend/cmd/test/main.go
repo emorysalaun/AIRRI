@@ -3,8 +3,11 @@ package main
 import (
 	"airri-backend/internal/db"
 	"airri-backend/internal/models"
+	"airri-backend/internal/services"
 	"log"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 func main() {
@@ -12,9 +15,10 @@ func main() {
 
 	db.Init()
 
-	userID := "11111111-1111-1111-1111-111111111111"
-	sessionID := "22222222-2222-2222-2222-222222222222"
+	userID := uuid.New().String()
+	sessionID := uuid.New().String()
 
+	// --- Create test user ---
 	user := models.User{
 		ID:        userID,
 		Email:     "test@example.com",
@@ -23,30 +27,35 @@ func main() {
 		UpdatedAt: time.Now(),
 	}
 
-	if err := db.DB.FirstOrCreate(&user, models.User{ID: user.ID}).Error; err != nil {
+	err := db.DB.FirstOrCreate(&user, models.User{Email: user.Email}).Error
+	if err != nil {
 		log.Fatal("failed to create user:", err)
 	}
 
+	// --- Create test session ---
 	session := models.Session{
 		ID:        sessionID,
 		UserID:    &user.ID,
 		CreatedAt: time.Now(),
 	}
 
-	if err := db.DB.FirstOrCreate(&session, models.Session{ID: session.ID}).Error; err != nil {
+	err = db.DB.FirstOrCreate(&session, models.Session{ID: session.ID}).Error
+	if err != nil {
 		log.Fatal("failed to create session:", err)
 	}
 
-	event := models.InteractionEvent{
-		UserID:    user.ID,
-		SessionID: &session.ID,
-		EventType: "test_event",
-		Metadata:  `{"message":"hello world"}`,
-		CreatedAt: time.Now(),
-	}
-
-	if err := db.DB.Create(&event).Error; err != nil {
-		log.Fatal("failed to create event:", err)
+	// --- Log test interaction event ---
+	err = services.LogEvent(
+		db.DB,
+		user.ID,
+		&session.ID,
+		"test_event",
+		services.StringPtr("session"),
+		&session.ID,
+		`{"message":"hello world"}`,
+	)
+	if err != nil {
+		log.Fatal("failed to log event:", err)
 	}
 
 	log.Println("Test data inserted successfully.")
