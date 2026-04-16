@@ -33,7 +33,7 @@ func CreateInteractionEvent(c echo.Context) error {
 	}
 
 	// temporary until JWT is added
-	userID := "11111111-1111-1111-1111-111111111111"
+	userID := "ee487754-0af9-42d1-a869-7bc195b2f315"
 
 	err = services.LogEvent(
 		db.DB,

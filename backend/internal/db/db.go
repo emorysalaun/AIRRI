@@ -15,5 +15,15 @@ func Init() {
 		log.Fatal("failed to connect database:", err)
 	}
 
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatal("failed to get sql.DB:", err)
+	}
+
+	_, err = sqlDB.Exec("PRAGMA foreign_keys = ON")
+	if err != nil {
+		log.Fatal("failed to enable foreign keys:", err)
+	}
+
 	DB = db
 }
