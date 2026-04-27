@@ -25,7 +25,6 @@ evaluation/__pycache__/
 # -----------------------------
 data/renders/*
 !data/renders/.gitkeep
-data/airri.db
 
 # -----------------------------
 # Evaluation outputs
@@ -60,3 +59,9 @@ vite.config.ts.timestamp-*
 evaluation/data/renders/*
 !evaluation/data/renders/.gitkeep
 evaluation/activate.bat
+
+# -----------------------------
+# Backend Data
+# -----------------------------
+backend/data/*
+!backend/data/.gitkeep

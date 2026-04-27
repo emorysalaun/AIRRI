@@ -1,7 +1,6 @@
 package db
 
 import (
-	"airri-backend/internal/models"
 	"log"
 
 	"gorm.io/driver/sqlite"
@@ -11,14 +10,19 @@ import (
 var DB *gorm.DB
 
 func Init() {
-	db, err := gorm.Open(sqlite.Open("../data/airri.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("data/airri.db"), &gorm.Config{})
 	if err != nil {
 		log.Fatal("failed to connect database:", err)
 	}
 
-	err = db.AutoMigrate(&models.Session{})
+	sqlDB, err := db.DB()
 	if err != nil {
-		log.Fatal("failed to migrate database:", err)
+		log.Fatal("failed to get sql.DB:", err)
+	}
+
+	_, err = sqlDB.Exec("PRAGMA foreign_keys = ON")
+	if err != nil {
+		log.Fatal("failed to enable foreign keys:", err)
 	}
 
 	DB = db
