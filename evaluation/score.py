@@ -16,6 +16,12 @@ def levenshtein(a: str, b: str) -> int:
         dp = new_dp
     return dp[-1]
 
+def tokenize_words(text: str, ignore_case: bool = True) -> list[str]:
+    if ignore_case:
+        text = text.lower()
+
+    return re.findall(r"\S+", text)
+
 
 def normalize_text(text: str, ignore_case: bool = True) -> str:
     cleaned = re.sub(r"\s+", "", text)
@@ -33,6 +39,17 @@ def evaluate_text_pair(predicted: str, ground_truth: str, ignore_case: bool = Tr
 
     dist = levenshtein(gt_clean, pred_clean)
     accuracy = (1 - dist / len(gt_clean)) * 100
+    return max(0.0, accuracy)
+
+def evaluate_text_pair_wer(predicted: str, ground_truth: str, ignore_case: bool = True) -> float:
+    pred_tokens = tokenize_words(predicted, ignore_case)
+    gt_tokens = tokenize_words(ground_truth, ignore_case)
+
+    if not gt_tokens:
+        return 100.0 if not pred_tokens else 0.0
+
+    dist = levenshtein(gt_tokens, pred_tokens)
+    accuracy = (1 - dist / len(gt_tokens)) * 100
     return max(0.0, accuracy)
 
 
@@ -89,3 +106,27 @@ def evaluate_ocr_folder_with_manifest(results_dir, manifest, ignore_case: bool =
         )
 
     return scores
+
+def evaluate_ocr_folder_with_manifest_wer(results_dir, manifest, ignore_case: bool = True):
+    results_dir = Path(results_dir)
+    scores = {}
+
+    for item in manifest:
+        image_name = item["image_name"]
+        ground_truth = item["ground_truth"]
+
+        txt_name = Path(image_name).with_suffix(".txt").name
+        txt_path = results_dir / txt_name
+
+        if not txt_path.exists():
+            continue
+
+        ocr_output = txt_path.read_text(encoding="utf-8")
+        scores[txt_name] = evaluate_text_pair_wer(
+            ocr_output,
+            ground_truth,
+            ignore_case=ignore_case,
+        )
+
+    return scores
+

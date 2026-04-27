@@ -8,6 +8,7 @@ from engines.tesseract_engine import run_tesseract_folder
 from engines.gotocr_engine import run_gotocr_folder
 
 from score import evaluate_ocr_folder_with_manifest
+from score import evaluate_ocr_folder_with_manifest_wer
 
 
 warnings.filterwarnings("ignore")
@@ -51,37 +52,51 @@ def load_manifest(manifest_path: Path) -> list[dict]:
     return data
 
 
-def print_engine_results(results_dir: Path, scores: dict[str, float], engine_name: str) -> None:
+def print_engine_results(
+    results_dir: Path,
+    cer_scores: dict[str, float],
+    wer_scores: dict[str, float],
+    engine_name: str
+) -> None:
     print(f"\n--- {engine_name} Results ---")
 
-    for name, acc in scores.items():
+    for name in cer_scores:
+        cer = cer_scores[name]
+        wer = wer_scores.get(name, 0.0)
+
         text_path = results_dir / name
         text = text_path.read_text(encoding="utf-8") if text_path.exists() else "[Missing OCR output file]"
 
         print(f"\n{name}")
         print("-" * 60)
         print(text)
-        print(f"\nAccuracy → {acc:.2f}%\n")
+        print(f"\nCER → {cer:.2f}%")
+        print(f"WER → {wer:.2f}%\n")
 
-        append_result(name, engine_name, acc)
+        append_result(name, engine_name + "_CER", cer)
+        append_result(name, engine_name + "_WER", wer)
 
-    if not scores:
+    if not cer_scores:
         print("No results found.")
         return
 
     print("\nSummary")
     print("-" * 39)
 
-    values = list(scores.values())
-    avg = sum(values) / len(values)
+    cer_values = list(cer_scores.values())
+    wer_values = list(wer_scores.values())
 
-    best_file = max(scores, key=scores.get)
-    worst_file = min(scores, key=scores.get)
+    cer_avg = sum(cer_values) / len(cer_values)
+    wer_avg = sum(wer_values) / len(wer_values)
 
-    print(f"Images evaluated : {len(scores)}")
-    print(f"Average accuracy : {avg:.2f}%")
-    print(f"Best result      : {best_file} ({scores[best_file]:.2f}%)")
-    print(f"Worst result     : {worst_file} ({scores[worst_file]:.2f}%)")
+    best_file = max(cer_scores, key=cer_scores.get)
+    worst_file = min(cer_scores, key=cer_scores.get)
+
+    print(f"Images evaluated : {len(cer_scores)}")
+    print(f"Average CER      : {cer_avg:.2f}%")
+    print(f"Average WER      : {wer_avg:.2f}%")
+    print(f"Best CER result  : {best_file} ({cer_scores[best_file]:.2f}%)")
+    print(f"Worst CER result : {worst_file} ({cer_scores[worst_file]:.2f}%)")
 
 
 def main() -> None:
@@ -122,17 +137,20 @@ def main() -> None:
     # )
     # print(f"  Done   ({gotocr_count} images)\n")
 
-    print("[4/6] EasyOCR Character Accuracy Evaluation")
-    easyocr_scores = evaluate_ocr_folder_with_manifest(EASYOCR_RESULTS_DIR, manifest)
-    print_engine_results(EASYOCR_RESULTS_DIR, easyocr_scores, "EasyOCR")
+    print("[4/6] EasyOCR Evaluation (CER + WER)")
+    easyocr_cer = evaluate_ocr_folder_with_manifest(EASYOCR_RESULTS_DIR, manifest)
+    easyocr_wer = evaluate_ocr_folder_with_manifest_wer(EASYOCR_RESULTS_DIR, manifest)
+    print_engine_results(EASYOCR_RESULTS_DIR, easyocr_cer, easyocr_wer, "EasyOCR")
 
-    print("[5/6] Tesseract Character Accuracy Evaluation")
-    tesseract_scores = evaluate_ocr_folder_with_manifest(TESSERACT_RESULTS_DIR, manifest)
-    print_engine_results(TESSERACT_RESULTS_DIR, tesseract_scores, "Tesseract")
+    print("[5/6] Tesseract Evaluation (CER + WER)")
+    tesseract_cer = evaluate_ocr_folder_with_manifest(TESSERACT_RESULTS_DIR, manifest)
+    tesseract_wer = evaluate_ocr_folder_with_manifest_wer(TESSERACT_RESULTS_DIR, manifest)
+    print_engine_results(TESSERACT_RESULTS_DIR, tesseract_cer, tesseract_wer, "Tesseract")
 
-    # print("[6/6] GOT-OCR2 Character Accuracy Evaluation")
-    # gotocr_scores = evaluate_ocr_folder_with_manifest(GOTOCR_RESULTS_DIR, manifest)
-    # print_engine_results(GOTOCR_RESULTS_DIR, gotocr_scores, "GOT-OCR2")
+    # print("[6/6] GOT-OCR2 Evaluation (CER + WER)")
+    # gotocr_cer = evaluate_ocr_folder_with_manifest(GOTOCR_RESULTS_DIR, manifest)
+    # gotocr_wer = evaluate_ocr_folder_with_manifest_wer(GOTOCR_RESULTS_DIR, manifest)
+    # print_engine_results(GOTOCR_RESULTS_DIR, gotocr_cer, gotocr_wer, "GOT-OCR2")
 
     print("\nPipeline complete.\n")
 
