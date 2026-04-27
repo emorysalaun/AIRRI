@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 import warnings
+import csv
 
 from engines.easyocr_engine import run_easyocr_folder
 from engines.tesseract_engine import run_tesseract_folder
@@ -22,6 +23,18 @@ RESULTS_DIR = BASE_DIR / "results"
 EASYOCR_RESULTS_DIR = RESULTS_DIR / "easyocr"
 TESSERACT_RESULTS_DIR = RESULTS_DIR / "tesseract"
 GOTOCR_RESULTS_DIR = RESULTS_DIR / "gotocr"
+CSV_PATH = RESULTS_DIR / "results.csv"
+
+def append_result(image_name: str, model: str, accuracy: float):
+    file_exists = CSV_PATH.exists()
+
+    with open(CSV_PATH, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+
+        if not file_exists:
+            writer.writerow(["image_name", "model", "accuracy"])
+
+        writer.writerow([image_name, model, round(accuracy, 4)])
 
 
 def load_manifest(manifest_path: Path) -> list[dict]:
@@ -49,6 +62,8 @@ def print_engine_results(results_dir: Path, scores: dict[str, float], engine_nam
         print("-" * 60)
         print(text)
         print(f"\nAccuracy → {acc:.2f}%\n")
+
+        append_result(name, engine_name, acc)
 
     if not scores:
         print("No results found.")
@@ -97,15 +112,15 @@ def main() -> None:
     )
     print(f"  Done   ({tesseract_count} images)\n")
 
-    print("[3/6] GOT-OCR2 Inference")
-    gotocr_count = run_gotocr_folder(
-        input_dir=RENDERS_DIR,
-        output_dir=GOTOCR_RESULTS_DIR,
-        model_name="stepfun-ai/GOT-OCR-2.0-hf",
-        device=None,
-        max_new_tokens=1024,
-    )
-    print(f"  Done   ({gotocr_count} images)\n")
+    # print("[3/6] GOT-OCR2 Inference")
+    # gotocr_count = run_gotocr_folder(
+    #     input_dir=RENDERS_DIR,
+    #     output_dir=GOTOCR_RESULTS_DIR,
+    #     model_name="stepfun-ai/GOT-OCR-2.0-hf",
+    #     device=None,
+    #     max_new_tokens=1024,
+    # )
+    # print(f"  Done   ({gotocr_count} images)\n")
 
     print("[4/6] EasyOCR Character Accuracy Evaluation")
     easyocr_scores = evaluate_ocr_folder_with_manifest(EASYOCR_RESULTS_DIR, manifest)
@@ -115,9 +130,9 @@ def main() -> None:
     tesseract_scores = evaluate_ocr_folder_with_manifest(TESSERACT_RESULTS_DIR, manifest)
     print_engine_results(TESSERACT_RESULTS_DIR, tesseract_scores, "Tesseract")
 
-    print("[6/6] GOT-OCR2 Character Accuracy Evaluation")
-    gotocr_scores = evaluate_ocr_folder_with_manifest(GOTOCR_RESULTS_DIR, manifest)
-    print_engine_results(GOTOCR_RESULTS_DIR, gotocr_scores, "GOT-OCR2")
+    # print("[6/6] GOT-OCR2 Character Accuracy Evaluation")
+    # gotocr_scores = evaluate_ocr_folder_with_manifest(GOTOCR_RESULTS_DIR, manifest)
+    # print_engine_results(GOTOCR_RESULTS_DIR, gotocr_scores, "GOT-OCR2")
 
     print("\nPipeline complete.\n")
 
