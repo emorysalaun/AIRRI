@@ -65,3 +65,4 @@ evaluation/activate.bat
 # -----------------------------
 backend/data/*
 !backend/data/.gitkeep
+backend/internal/db/db.go
