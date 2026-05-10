@@ -109,7 +109,7 @@ def main() -> None:
         input_dir=RENDERS_DIR,
         output_dir=EASYOCR_RESULTS_DIR,
         languages=["en"],
-        gpu=False,
+        gpu=None,
         paragraph=True,
         use_sorted_reading_order=False,
     )
@@ -127,15 +127,15 @@ def main() -> None:
     )
     print(f"  Done   ({tesseract_count} images)\n")
 
-    # print("[3/6] GOT-OCR2 Inference")
-    # gotocr_count = run_gotocr_folder(
-    #     input_dir=RENDERS_DIR,
-    #     output_dir=GOTOCR_RESULTS_DIR,
-    #     model_name="stepfun-ai/GOT-OCR-2.0-hf",
-    #     device=None,
-    #     max_new_tokens=1024,
-    # )
-    # print(f"  Done   ({gotocr_count} images)\n")
+    print("[3/6] GOT-OCR2 Inference")
+    gotocr_count = run_gotocr_folder(
+        input_dir=RENDERS_DIR,
+        output_dir=GOTOCR_RESULTS_DIR,
+        model_name="stepfun-ai/GOT-OCR-2.0-hf",
+        device=None,
+        max_new_tokens=1024,
+    )
+    print(f"  Done   ({gotocr_count} images)\n")
 
     print("[4/6] EasyOCR Evaluation (CER + WER)")
     easyocr_cer = evaluate_ocr_folder_with_manifest(EASYOCR_RESULTS_DIR, manifest)
@@ -147,10 +147,10 @@ def main() -> None:
     tesseract_wer = evaluate_ocr_folder_with_manifest_wer(TESSERACT_RESULTS_DIR, manifest)
     print_engine_results(TESSERACT_RESULTS_DIR, tesseract_cer, tesseract_wer, "Tesseract")
 
-    # print("[6/6] GOT-OCR2 Evaluation (CER + WER)")
-    # gotocr_cer = evaluate_ocr_folder_with_manifest(GOTOCR_RESULTS_DIR, manifest)
-    # gotocr_wer = evaluate_ocr_folder_with_manifest_wer(GOTOCR_RESULTS_DIR, manifest)
-    # print_engine_results(GOTOCR_RESULTS_DIR, gotocr_cer, gotocr_wer, "GOT-OCR2")
+    print("[6/6] GOT-OCR2 Evaluation (CER + WER)")
+    gotocr_cer = evaluate_ocr_folder_with_manifest(GOTOCR_RESULTS_DIR, manifest)
+    gotocr_wer = evaluate_ocr_folder_with_manifest_wer(GOTOCR_RESULTS_DIR, manifest)
+    print_engine_results(GOTOCR_RESULTS_DIR, gotocr_cer, gotocr_wer, "GOT-OCR2")
 
     print("\nPipeline complete.\n")
 

@@ -1,4 +1,5 @@
 from pathlib import Path
+import torch
 from typing import Iterable
 import easyocr
 
@@ -67,7 +68,7 @@ def run_easyocr_folder(
     input_dir: Path,
     output_dir: Path,
     languages: list[str] | None = None,
-    gpu: bool = False,
+    gpu: bool | None = None,
     paragraph: bool = True,
     use_sorted_reading_order: bool = False,
     line_threshold: int = 25,
@@ -83,7 +84,12 @@ def run_easyocr_folder(
 
     clear_txt_outputs(output_dir)
 
+    if gpu is None:
+        gpu = torch.cuda.is_available()
+
+
     reader = easyocr.Reader(languages, gpu=gpu)
+
     render_images = get_render_images(input_dir)
 
     for image_path in render_images:
