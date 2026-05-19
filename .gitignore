@@ -45,6 +45,16 @@ evaluation/results/*
 !.env.test
 
 # -----------------------------
+# VS Code
+# -----------------------------
+.vscode/
+
+# -----------------------------
+# Python cache (global)
+# -----------------------------
+__pycache__/
+
+# -----------------------------
 # OS junk
 # -----------------------------
 .DS_Store
@@ -66,3 +76,8 @@ evaluation/activate.bat
 backend/data/*
 !backend/data/.gitkeep
 backend/internal/db/db.go
+
+# -----------------------------
+# Adversarial pipeline outputs
+# -----------------------------
+adversarial/output/
