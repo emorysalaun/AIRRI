@@ -85,7 +85,7 @@ class AdversarialPipeline:
 
         attack_dir = self.config.output_dir / attack_name
         config_overrides = self.config.attack_configs.get(attack_name, {})
-        eps_list = self.config.attack_eps.get(attack_name, [0.05])
+        eps_list = self.config.attack_eps.get(attack_name)
 
         for eps_idx, eps in enumerate(eps_list, 1):
             self.logger.subsection(

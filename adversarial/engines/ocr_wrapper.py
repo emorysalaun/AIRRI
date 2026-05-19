@@ -27,6 +27,7 @@ from score import evaluate_text_pair
 # adversarial/engines/ (this package).
 import importlib.util
 
+
 def _import_eval_engine(module_name, filename):
     spec = importlib.util.spec_from_file_location(
         module_name, _EVAL_DIR / "engines" / filename
@@ -34,6 +35,7 @@ def _import_eval_engine(module_name, filename):
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
 
 _easyocr_mod = _import_eval_engine("easyocr_engine", "easyocr_engine.py")
 _tesseract_mod = _import_eval_engine("tesseract_engine", "tesseract_engine.py")
@@ -60,7 +62,7 @@ ENGINE_FNS = {
         lang="eng",
         psm=6,
         oem=3,
-        timeout=10.0,
+        timeout=120.0,
     ),
     "gotocr": lambda in_dir, out_dir: run_gotocr_folder(
         input_dir=in_dir,
@@ -124,6 +126,7 @@ class OCRModelWrapper:
         self.cer_threshold = cer_threshold
         self._query_count = 0
         self._work_dir = tempfile.mkdtemp(prefix="ocr_wrapper_")
+        self.target_threshold = None
 
     def __call__(self, image_tensor):
         """Run OCR on image_tensor and return 2-class pseudo-logits.
@@ -146,7 +149,19 @@ class OCRModelWrapper:
             accuracy = evaluate_text_pair(ocr_text, self.ground_truth)
             self._query_count += 1
 
-            if accuracy >= self.cer_threshold:
+            if self.target_threshold is None:
+                # First clean image evaluation: set dynamic threshold
+                if accuracy >= self.cer_threshold:
+                    self.target_threshold = self.cer_threshold
+                else:
+                    # If it already scores low naturally due to image/text size or engine capability,
+                    # ask the attack to drop it by a relative margin to ensure perturbation.
+                    # e.g., drop by another 10 points or half its current value
+                    self.target_threshold = max(
+                        0.0, min(accuracy - 10.0, accuracy * 0.8)
+                    )
+
+            if accuracy >= self.target_threshold:
                 logits[i] = torch.tensor([0.0, 1.0])  # class 1: correct
             else:
                 logits[i] = torch.tensor([1.0, 0.0])  # class 0: misread
