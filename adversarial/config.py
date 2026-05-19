@@ -18,45 +18,49 @@ class PipelineConfig:
     engines: list[str] = field(
         default_factory=lambda: ["easyocr", "tesseract", "gotocr", "trocr"]
     )
+
     attack_configs: dict = field(
         default_factory=lambda: {
             "smoo": {
-                "iterations": 150,
-                "pc": 0.85,
-                "pm": 0.15,
-                "pop_size": 10,
+                "iterations": 500,      # 500 gens × pop_size=10 ≈ 5000 queries
+                "pc": 0.80,             # crossover: balanced exploration
+                "pm": 0.20,             # mutation: diverse pixel candidates
+                "pop_size": 10,         # 10 candidates/generation
                 "seed": 42,
             },
             "adba": {
-                "budget": 2500,
-                "init_dir": 1,
-                "offspring_n": 8,
+                "budget": 10000,        # 10K queries — exhaustive boundary search
+                "init_dir": 1,          # positive initial direction
+                "offspring_n": 10,      # 10 offspring for fine-grained boundary
                 "binary_mode": 0,
             },
             "rays": {
-                "query_limit": 2000,
+                "query_limit": 10000,   # 10K queries — deep sign search
             },
             "surfree": {
-                "init": {"steps": 75, "max_queries": 2500},
+                "init": {
+                    "steps": 200,       # 200 optimization steps
+                    "max_queries": 10000,  # 10K queries for L2 minimization
+                },
                 "run": {},
             },
             "l0_pgd": {
-                "n_restarts": 1,
-                "num_steps": 100,
+                "n_restarts": 5,        # 5 random restarts for best L0 solution
+                "num_steps": 500,       # 500 PGD steps per restart
                 "step_size": 120.0 / 255.0,
-                "random_start": False,
+                "random_start": True,   # randomize for diversity across restarts
             },
             "l0_sigma_pgd": {
-                "n_restarts": 1,
-                "num_steps": 100,
+                "n_restarts": 5,
+                "num_steps": 500,
                 "step_size": 120.0 / 255.0,
-                "random_start": False,
+                "random_start": True,
             },
             "l0_linf_pgd": {
-                "n_restarts": 1,
-                "num_steps": 100,
+                "n_restarts": 5,
+                "num_steps": 500,
                 "step_size": 120.0 / 255.0,
-                "random_start": False,
+                "random_start": True,
             },
         }
     )
