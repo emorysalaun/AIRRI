@@ -5,14 +5,14 @@ import numpy as np
 import torch
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 
-
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"}
 
 
 def get_render_images(input_dir: Path) -> list[Path]:
     return sorted(
         [
-            p for p in input_dir.iterdir()
+            p
+            for p in input_dir.iterdir()
             if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS
         ]
     )
@@ -156,6 +156,14 @@ def prepare_line_for_trocr(line_img: Image.Image) -> Image.Image:
     return line_img.convert("RGB")
 
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"Loading TrOCR to device: {device}")
+PROCESSOR = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")
+MODEL = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-base-printed")
+MODEL.to(device)
+MODEL.eval()
+
+
 def run_trocr_folder(
     input_dir: Path,
     output_dir: Path,
@@ -165,13 +173,8 @@ def run_trocr_folder(
 ) -> int:
     clear_txt_outputs(output_dir)
 
-    if device is None:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    processor = TrOCRProcessor.from_pretrained(model_name)
-    model = VisionEncoderDecoderModel.from_pretrained(model_name)
-    model.to(device)
-    model.eval()
+    processor = PROCESSOR
+    model = MODEL
 
     render_images = get_render_images(input_dir)
 
@@ -195,7 +198,9 @@ def run_trocr_folder(
                 # debug save
                 line_img.save(debug_dir / f"{image_path.stem}_line_{i+1}.png")
 
-                pixel_values = processor(images=line_img, return_tensors="pt").pixel_values
+                pixel_values = processor(
+                    images=line_img, return_tensors="pt"
+                ).pixel_values
                 pixel_values = pixel_values.to(device)
 
                 with torch.no_grad():
@@ -208,8 +213,7 @@ def run_trocr_folder(
                     )
 
                 line_text = processor.batch_decode(
-                    generated_ids,
-                    skip_special_tokens=True
+                    generated_ids, skip_special_tokens=True
                 )[0].strip()
 
                 lines_text.append(line_text)

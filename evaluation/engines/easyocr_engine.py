@@ -3,14 +3,14 @@ import torch
 from typing import Iterable
 import easyocr
 
-
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"}
 
 
 def get_render_images(input_dir: Path) -> list[Path]:
     return sorted(
         [
-            p for p in input_dir.iterdir()
+            p
+            for p in input_dir.iterdir()
             if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS
         ]
     )
@@ -64,6 +64,11 @@ def sort_reading_order(results: Iterable, line_threshold: int = 25) -> list[str]
     return ordered_text
 
 
+gpu_available = torch.cuda.is_available()
+print(f"Loading EasyOCR (GPU: {gpu_available})")
+READER = easyocr.Reader(["en"], gpu=gpu_available)
+
+
 def run_easyocr_folder(
     input_dir: Path,
     output_dir: Path,
@@ -84,11 +89,7 @@ def run_easyocr_folder(
 
     clear_txt_outputs(output_dir)
 
-    if gpu is None:
-        gpu = torch.cuda.is_available()
-
-
-    reader = easyocr.Reader(languages, gpu=gpu)
+    reader = READER
 
     render_images = get_render_images(input_dir)
 
