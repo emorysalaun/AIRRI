@@ -5,7 +5,8 @@ import time
 import warnings
 from pathlib import Path
 from datetime import datetime
-
+import tempfile
+import shutil
 import torch
 
 # Ensure adversarial/ and evaluation/ are importable
@@ -64,6 +65,19 @@ class AdversarialPipeline:
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.logger.info(f"Device: {device}")
+
+        # Preload engines into VRAM to prevent lazy-loading
+        self.logger.info(f"Pre-loading engines into memory: {self.config.engines}")
+
+        temp_in = Path(tempfile.mkdtemp())
+        temp_out = Path(tempfile.mkdtemp())
+        try:
+            for engine_name in self.config.engines:
+                if engine_name in ENGINE_FNS:
+                    ENGINE_FNS[engine_name](temp_in, temp_out)
+        finally:
+            shutil.rmtree(temp_in, ignore_errors=True)
+            shutil.rmtree(temp_out, ignore_errors=True)
 
         pipeline_start = time.perf_counter()
 
