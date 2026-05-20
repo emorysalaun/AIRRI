@@ -128,14 +128,18 @@ def run_pipeline_test(test_renders_dir, test_manifest_path):
                 engine_dir = attack_dir / eps_tag / engine
                 perturbed_dir = engine_dir / "perturbed_images"
                 results_dir = engine_dir / "results"
-                
+
                 img_count = (
-                    len(list(perturbed_dir.glob("*.png"))) if perturbed_dir.exists() else 0
+                    len(list(perturbed_dir.glob("*.png")))
+                    if perturbed_dir.exists()
+                    else 0
                 )
                 txt_count = (
                     len(list(results_dir.glob("*.txt"))) if results_dir.exists() else 0
                 )
-                print(f"    {engine}: {img_count} perturbed images, {txt_count} OCR result files")
+                print(
+                    f"    {engine}: {img_count} perturbed images, {txt_count} OCR result files"
+                )
 
     # check logs
     log_dir = config.output_dir / "logs"

@@ -62,19 +62,18 @@ class AdversarialPipeline:
             return
         self.logger.info(f"Found {len(renders)} render images")
 
-        render_names = [p.name for p in renders]
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.logger.info(f"Device: {device}")
 
         pipeline_start = time.perf_counter()
 
         for attack_name in self.config.attacks:
-            self._run_attack(attack_name, renders, render_names, device)
+            self._run_attack(attack_name, renders, device)
 
         total = time.perf_counter() - pipeline_start
         self.logger.section(f"Pipeline complete — {total:.2f}s total")
 
-    def _run_attack(self, attack_name, renders, render_names, device):
+    def _run_attack(self, attack_name, renders, device):
         self.logger.section(f"Attack: {attack_name}")
 
         try:
@@ -85,7 +84,7 @@ class AdversarialPipeline:
 
         attack_dir = self.config.output_dir / attack_name
         config_overrides = self.config.attack_configs.get(attack_name, {})
-        eps_list = self.config.attack_eps.get(attack_name)
+        eps_list = self.config.attack_eps.get(attack_name, [])
 
         for eps_idx, eps in enumerate(eps_list, 1):
             self.logger.subsection(
@@ -168,7 +167,7 @@ class AdversarialPipeline:
                     )
 
                 except Exception as e:
-                    self.logger.error(
+                    self.logger.exception(
                         f"Failed: {attack_name}/{engine_name}/eps={eps}: {e}"
                     )
 
