@@ -23,6 +23,11 @@ def load_manifest(manifest_path: Path) -> list[dict]:
     return data
 
 
+def filter_clean_manifest(manifest: list[dict]) -> list[dict]:
+    """Keep only manifest entries whose image_name contains 'clean'."""
+    return [item for item in manifest if "clean" in item["image_name"].lower()]
+
+
 def get_render_images(input_dir: Path) -> list[Path]:
     """Return sorted list of image files in the given directory."""
     return sorted(

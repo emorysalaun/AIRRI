@@ -65,10 +65,19 @@ class PipelineConfig:
         }
     )
     cer_threshold: float = 50.0
-    manifest_path: Path = (
-        Path(__file__).resolve().parent.parent / "evaluation" / "data" / "manifest.json"
-    )
-    renders_dir: Path = (
-        Path(__file__).resolve().parent.parent / "evaluation" / "data" / "renders"
+    dataset_root: Path = Path(__file__).resolve().parent.parent / "dataset"
+    datasets: list[dict] = field(
+        default_factory=lambda: [
+            {
+                "name": "UCONN",
+                "manifest": "UCONN/manifest.json",
+                "renders": "UCONN/clean_renders",
+            },
+            {
+                "name": "8and12_12",
+                "manifest": "8and12/12/manifest.json",
+                "renders": "8and12/12/clean_renders",
+            },
+        ]
     )
     output_dir: Path = Path(__file__).resolve().parent / "output"

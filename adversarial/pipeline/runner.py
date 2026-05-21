@@ -26,6 +26,7 @@ from engines import OCRModelWrapper, ENGINE_FNS
 from attacks import get_attack
 from data import (
     load_manifest,
+    filter_clean_manifest,
     get_render_images,
     images_to_dataloader,
     save_adversarial_images,
@@ -44,14 +45,9 @@ class AdversarialPipeline:
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.logger = ExperimentLogger("adversarial_pipeline", str(self.log_dir))
         self.reporter = PipelineReporter(self.logger)
-        self.manifest = load_manifest(config.manifest_path)
 
     def run(self):
         self.logger.section("AIRRI Adversarial Evaluation Pipeline")
-        renders = get_render_images(self.config.renders_dir)
-        if not renders:
-            self.logger.error("No render images found. Aborting.")
-            return
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -69,46 +65,117 @@ class AdversarialPipeline:
 
         pipeline_start = time.perf_counter()
 
-        # Generate a flat list of config tasks
+        # Iterate over each dataset subdirectory
+        for ds in self.config.datasets:
+            ds_name = ds["name"]
+            manifest_path = self.config.dataset_root / ds["manifest"]
+            renders_dir = self.config.dataset_root / ds["renders"]
+
+            self.logger.section(f"Dataset: {ds_name}")
+            self.logger.info(f"  manifest : {manifest_path}")
+            self.logger.info(f"  renders  : {renders_dir}")
+
+            # Load manifest and filter to clean-only entries
+            manifest = load_manifest(manifest_path)
+            manifest = filter_clean_manifest(manifest)
+            self.logger.info(f"  Loaded {len(manifest)} clean manifest entries")
+
+            renders = get_render_images(renders_dir)
+            if not renders:
+                self.logger.warning(
+                    f"No render images found in {renders_dir}. Skipping dataset."
+                )
+                continue
+
+            self.logger.info(f"  Found {len(renders)} render images")
+
+            # Per-dataset output: output/UCONN/..., output/8and12_12/...
+            ds_output_dir = self.config.output_dir / ds_name
+            self._run_dataset(manifest, renders, device, ds_output_dir)
+
+        # Flush CSV safely at the end — combined across all datasets
+        self.reporter.write_csv(self.config.output_dir / "all_scores.csv")
+
+        total = time.perf_counter() - pipeline_start
+        self.logger.section(f"Pipeline complete — {total:.2f}s total")
+
+    def _run_dataset(self, manifest, renders, device, ds_output_dir):
+        """Run all attack configs against a single dataset's renders.
+
+        Multi-threading architecture:
+        - Outer ThreadPoolExecutor dispatches attack configs
+        - GPU semaphore limits concurrent CUDA-heavy sections
+        - Inner ThreadPoolExecutor (inside _run_attack_config)
+          can run OCR engines concurrently
+        """
+
+        # Generate flat config task list
         tasks = []
         for attack_name in self.config.attacks:
             eps_list = self.config.attack_eps.get(attack_name, [])
             for eps in eps_list:
                 tasks.append((attack_name, eps))
 
-        self.logger.info(f"Dispatching {len(tasks)} parallel configs...")
+        if not tasks:
+            self.logger.warning("No attack tasks found. Skipping dataset.")
+            return
 
-        # ISSUE 16 TICKETS so 16 can be querying GPU simultaneously
-        gpu_semaphore = threading.Semaphore(16)
+        num_tasks = len(tasks)
 
-        # Outer multithreading for Config execution
+        # CPU-side concurrency
+        outer_workers = min(16, num_tasks)
+
+        # IMPORTANT:
+        # Limit simultaneous GPU-heavy workloads.
+        # Start conservatively and benchmark upward if needed.
+        gpu_concurrency = 4
+
+        self.logger.info(
+            f"Dispatching {num_tasks} attack configs "
+            f"(outer_workers={outer_workers}, "
+            f"gpu_concurrency={gpu_concurrency})..."
+        )
+
+        # Shared semaphore for CUDA-heavy sections
+        gpu_semaphore = threading.Semaphore(gpu_concurrency)
+
+        futures = []
+
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=min(16, len(tasks))
+            max_workers=outer_workers,
+            thread_name_prefix="attack-config",
         ) as outer_executor:
-            futures = [
-                outer_executor.submit(
+
+            for attack_name, eps in tasks:
+                future = outer_executor.submit(
                     self._run_attack_config,
                     attack_name,
                     eps,
                     renders,
                     device,
                     gpu_semaphore,
+                    manifest,
+                    ds_output_dir,
                 )
-                for (attack_name, eps) in tasks
-            ]
+                futures.append(future)
+
+            completed = 0
+
             for future in concurrent.futures.as_completed(futures):
                 try:
                     future.result()
-                except Exception as e:
-                    self.logger.exception(f"Outer Config Thread Failed: {e}")
+                    completed += 1
 
-        # Flush CSV safely at the end
-        self.reporter.write_csv(self.config.output_dir / "all_scores.csv")
+                    self.logger.info(
+                        f"Completed {completed}/{num_tasks} attack configs"
+                    )
 
-        total = time.perf_counter() - pipeline_start
-        self.logger.section(f"Pipeline complete — {total:.2f}s total")
+                except Exception:
+                    self.logger.exception("Outer config thread failed")
 
-    def _run_attack_config(self, attack_name, eps, renders, device, gpu_semaphore):
+    def _run_attack_config(
+        self, attack_name, eps, renders, device, gpu_semaphore, manifest, ds_output_dir
+    ):
         self.logger.section(f"Attack Config: {attack_name} @ eps={eps}")
 
         try:
@@ -117,11 +184,11 @@ class AdversarialPipeline:
             self.logger.error(str(e))
             return
 
-        attack_dir = self.config.output_dir / attack_name
+        attack_dir = ds_output_dir / attack_name
         config_overrides = self.config.attack_configs.get(attack_name, {})
 
         eps_tag = f"eps_{eps:.4f}".rstrip("0").rstrip(".")
-        gt_map = {item["image_name"]: item["ground_truth"] for item in self.manifest}
+        gt_map = {item["image_name"]: item["ground_truth"] for item in manifest}
 
         engine_metrics = {
             eng: {"time": 0.0, "queries": 0}
@@ -191,10 +258,10 @@ class AdversarialPipeline:
                 engine_results_dir.mkdir(parents=True, exist_ok=True)
                 ENGINE_FNS[engine_name](perturbed_dir, engine_results_dir)
                 cer_scores = evaluate_ocr_folder_with_manifest(
-                    engine_results_dir, self.manifest
+                    engine_results_dir, manifest
                 )
                 wer_scores = evaluate_ocr_folder_with_manifest_wer(
-                    engine_results_dir, self.manifest
+                    engine_results_dir, manifest
                 )
                 self.reporter.record_scores(engine_name, eps, cer_scores, wer_scores)
             except Exception as e:

@@ -2,6 +2,7 @@
 
 from .handler import (
     load_manifest,
+    filter_clean_manifest,
     get_render_images,
     images_to_dataloader,
     save_adversarial_images,
@@ -9,6 +10,7 @@ from .handler import (
 
 __all__ = [
     "load_manifest",
+    "filter_clean_manifest",
     "get_render_images",
     "images_to_dataloader",
     "save_adversarial_images",
