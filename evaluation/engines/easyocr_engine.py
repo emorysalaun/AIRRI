@@ -64,9 +64,7 @@ def sort_reading_order(results: Iterable, line_threshold: int = 25) -> list[str]
     return ordered_text
 
 
-gpu_available = torch.cuda.is_available()
-print(f"Loading EasyOCR (GPU: {gpu_available})")
-READER = easyocr.Reader(["en"], gpu=gpu_available)
+_READER = None
 
 
 def run_easyocr_folder(
@@ -84,12 +82,18 @@ def run_easyocr_folder(
     Returns:
         Number of images processed.
     """
+    global _READER
     if languages is None:
         languages = ["en"]
 
     clear_txt_outputs(output_dir)
 
-    reader = READER
+    if gpu is None:
+        gpu = torch.cuda.is_available()
+
+    if _READER is None:
+        _READER = easyocr.Reader(languages, gpu=gpu)
+    reader = _READER
 
     render_images = get_render_images(input_dir)
 

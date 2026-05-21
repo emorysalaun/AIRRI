@@ -156,12 +156,8 @@ def prepare_line_for_trocr(line_img: Image.Image) -> Image.Image:
     return line_img.convert("RGB")
 
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Loading TrOCR to device: {device}")
-PROCESSOR = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")
-MODEL = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-base-printed")
-MODEL.to(device)
-MODEL.eval()
+_PROCESSOR = None
+_MODEL = None
 
 
 def run_trocr_folder(
@@ -171,10 +167,20 @@ def run_trocr_folder(
     device: str | None = None,
     max_new_tokens: int = 128,
 ) -> int:
+    global _PROCESSOR, _MODEL
     clear_txt_outputs(output_dir)
 
-    processor = PROCESSOR
-    model = MODEL
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    if _PROCESSOR is None or _MODEL is None:
+        _PROCESSOR = TrOCRProcessor.from_pretrained(model_name)
+        _MODEL = VisionEncoderDecoderModel.from_pretrained(model_name)
+        _MODEL.to(device)
+        _MODEL.eval()
+
+    processor = _PROCESSOR
+    model = _MODEL
 
     render_images = get_render_images(input_dir)
 

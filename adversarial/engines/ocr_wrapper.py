@@ -12,7 +12,7 @@ import sys
 import tempfile
 import shutil
 from pathlib import Path
-
+import os
 import torch
 from PIL import Image
 
@@ -125,7 +125,10 @@ class OCRModelWrapper:
         self.ground_truth = ground_truth
         self.cer_threshold = cer_threshold
         self._query_count = 0
-        self._work_dir = tempfile.mkdtemp(prefix="ocr_wrapper_")
+
+        # Use RAM Disk if available to bypass disk I/O bottleneck
+        temp_dir = "/dev/shm" if os.path.exists("/dev/shm") else None
+        self._work_dir = tempfile.mkdtemp(prefix="ocr_wrapper_", dir=temp_dir)
         self.target_threshold = None
 
     def __call__(self, image_tensor):

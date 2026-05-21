@@ -5,11 +5,8 @@ import torch
 from PIL import Image
 from transformers import AutoProcessor, AutoModelForImageTextToText
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Loading GOT-OCR to device: {device}")
-PROCESSOR = AutoProcessor.from_pretrained("stepfun-ai/GOT-OCR-2.0-hf")
-MODEL = AutoModelForImageTextToText.from_pretrained("stepfun-ai/GOT-OCR-2.0-hf").to(device)
-MODEL.eval()
+_PROCESSOR = None
+_MODEL = None
 
 
 def run_gotocr_folder(
@@ -19,6 +16,7 @@ def run_gotocr_folder(
     max_new_tokens: int = 1024,
     device: Optional[str] = None,
 ) -> int:
+    global _PROCESSOR, _MODEL
     input_dir = Path(input_dir)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -28,8 +26,13 @@ def run_gotocr_folder(
 
     print(f"Using device: {device}")
 
-    processor = PROCESSOR
-    model = MODEL
+    if _PROCESSOR is None or _MODEL is None:
+        _PROCESSOR = AutoProcessor.from_pretrained(model_name)
+        _MODEL = AutoModelForImageTextToText.from_pretrained(model_name).to(device)
+        _MODEL.eval()
+
+    processor = _PROCESSOR
+    model = _MODEL
 
     image_paths = sorted(
         p
