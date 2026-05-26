@@ -63,3 +63,23 @@ class PipelineConfig:
         ]
     )
     output_dir: Path = Path(__file__).resolve().parent / "output"
+
+    # LLM-based line selection configuration
+    llm_model: str = "google/gemma-4-31B-it:fastest"
+    llm_max_retries: int = 3
+
+    # Rendering configuration
+    render_font_path: str | None = None
+    render_font_size: int = 12
+    render_wrap_width: int = 90
+    render_margin_x: int = 15
+    render_margin_top: int = 16
+    render_margin_bottom: int = 17
+    render_line_padding: int = 5
+    render_bg_color: str = "white"
+    render_text_color: str = "black"
+
+    # Stitching and evaluation configurations
+    stitch_mode: str = "hard"  # "hard" mask compositing
+    eval_mode: str = "both"    # "full", "target", or "both"
+

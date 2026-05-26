@@ -73,3 +73,27 @@ def save_adversarial_images(
             pil_img = Image.fromarray(arr)
             pil_img.save(output_dir / original_names[idx])
             idx += 1
+
+
+def pil_to_dataloader(pil_image: Image.Image, batch_size: int = 1) -> DataLoader:
+    """Convert a single PIL image to a DataLoader for attack wrappers.
+
+    Labels are set to 1 (correctly read).
+    """
+    img = pil_image.convert("RGB")
+    arr = np.array(img, dtype=np.float32) / 255.0
+    tensor = torch.from_numpy(arr).permute(2, 0, 1)  # HWC -> CHW
+    x = tensor.unsqueeze(0)  # Add batch dimension (1, C, H, W)
+    y = torch.ones(1, dtype=torch.long)  # true label = 1 (read correctly)
+    return DataLoader(TensorDataset(x, y), batch_size=batch_size, shuffle=False)
+
+
+def save_composite_image(
+    composite: np.ndarray, output_dir: Path, image_name: str
+):
+    """Save a composite image (float32 numpy array [0,1] -> uint8 PNG)."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    arr = (np.clip(composite, 0.0, 1.0) * 255).astype(np.uint8)
+    pil_img = Image.fromarray(arr)
+    pil_img.save(output_dir / image_name)
+

@@ -6,6 +6,8 @@ from .handler import (
     get_render_images,
     images_to_dataloader,
     save_adversarial_images,
+    pil_to_dataloader,
+    save_composite_image,
 )
 
 __all__ = [
@@ -14,4 +16,7 @@ __all__ = [
     "get_render_images",
     "images_to_dataloader",
     "save_adversarial_images",
+    "pil_to_dataloader",
+    "save_composite_image",
 ]
+

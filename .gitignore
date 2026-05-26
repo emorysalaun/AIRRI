@@ -81,3 +81,4 @@ backend/internal/db/db.go
 # Adversarial pipeline outputs
 # -----------------------------
 adversarial/output/
+adversarial/tests/

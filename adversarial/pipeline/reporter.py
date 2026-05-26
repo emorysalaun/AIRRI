@@ -11,10 +11,36 @@ class PipelineReporter:
         self.logger = logger
         self.all_rows = []
 
+    def record_row(
+        self,
+        image_name: str,
+        engine_name: str,
+        eps: float,
+        attack_name: str,
+        eval_scope: str,
+        target_line: str,
+        cer: float,
+        wer: float,
+    ):
+        """Record a single score row for the CSV."""
+        img_name = image_name.replace(".txt", ".png") if image_name.endswith(".txt") else image_name
+        self.all_rows.append(
+            {
+                "image_name": img_name,
+                "engine": engine_name,
+                "eps": eps,
+                "attack": attack_name,
+                "eval_scope": eval_scope,
+                "target_line": target_line,
+                "cer": round(cer, 4),
+                "wer": round(wer, 4),
+            }
+        )
+
     def record_scores(
         self, engine_name: str, eps: float, cer_scores: dict, wer_scores: dict
     ):
-        """Log score summary and buffer rows for CSV output."""
+        """Log score summary and buffer rows for CSV output (backward compatibility)."""
         if not cer_scores:
             self.logger.warning("No scores computed")
             return
@@ -32,16 +58,15 @@ class PipelineReporter:
             self.logger.debug(
                 f"  {name}: CER={cer_scores[name]:.2f}% WER={wer_scores.get(name, 0):.2f}%"
             )
-
-            img_name = name.replace(".txt", ".png") if name.endswith(".txt") else name
-            self.all_rows.append(
-                {
-                    "image_name": img_name,
-                    "engine": engine_name,
-                    "eps": eps,
-                    "cer": round(cer_scores[name], 4),
-                    "wer": round(wer_scores.get(name, 0.0), 4),
-                }
+            self.record_row(
+                image_name=name,
+                engine_name=engine_name,
+                eps=eps,
+                attack_name="unknown",
+                eval_scope="full",
+                target_line="all",
+                cer=cer_scores[name],
+                wer=wer_scores.get(name, 0.0),
             )
 
     def write_csv(self, csv_path: Path):
@@ -50,7 +75,16 @@ class PipelineReporter:
             return
 
         csv_path.parent.mkdir(parents=True, exist_ok=True)
-        fieldnames = ["image_name", "engine", "eps", "cer", "wer"]
+        fieldnames = [
+            "image_name",
+            "engine",
+            "eps",
+            "attack",
+            "eval_scope",
+            "target_line",
+            "cer",
+            "wer",
+        ]
 
         with open(csv_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
