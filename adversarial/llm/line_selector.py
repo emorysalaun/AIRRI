@@ -70,12 +70,13 @@ Do NOT prioritize:
 - Instructor contact information
 - Generic academic integrity statements
 
-Selection criteria:
+Selection Constraints:
 1. Choose only lines that are essential for completing the assignment.
 2. If removing a line would significantly reduce an LLM's ability to perform the task correctly, include it.
 3. Prefer task-defining instructions over administrative details.
 4. Extract exact verbatim text only.
 5. Do not paraphrase, summarize, or combine excerpts.
+6. Extracted text cannot exceed 50% of original text in length.
 
 Return ONLY a JSON array of strings, where each string is an exact excerpt from the original assignment text.
 
