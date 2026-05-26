@@ -93,56 +93,49 @@ Assignment text:
                 completion = self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,
-                    max_tokens=1000,
+                    max_tokens=16000,
                 )
                 response_text = completion.choices[0].message.content
-                if response_text:
-                    break
+                if not response_text:
+                    raise ValueError("LLM API succeeded but returned an empty response.")
+
+                # Parse the JSON response
+                lines = self._parse_json_response(response_text)
+
+                # Validate that each selected line is actually a substring of ground_truth
+                valid_lines = []
+                for line in lines:
+                    line_stripped = line.strip()
+                    if not line_stripped:
+                        continue
+                    if line_stripped in ground_truth:
+                        valid_lines.append(line_stripped)
+                    else:
+                        # Try a slightly relaxed search (e.g. normalize spaces)
+                        matched = self._find_fuzzy_match(line_stripped, ground_truth)
+                        if matched:
+                            valid_lines.append(matched)
+                        else:
+                            logger.warning(
+                                f"LLM selected line not found in ground truth: {repr(line_stripped)}"
+                            )
+
+                if not valid_lines:
+                    raise ValueError("LLM response did not contain any valid lines that matched the text.")
+
+                return valid_lines
+
             except Exception as e:
-                logger.warning(
-                    f"LLM API call failed on attempt {attempt + 1}/{self.max_retries}: {e}"
+                logger.error(
+                    f"LLM API call or parsing failed on attempt {attempt + 1}/{self.max_retries}: {e}"
                 )
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delay * (2**attempt))
                 else:
                     logger.error("LLM API call failed after all retries.")
-                    raise RuntimeError("LLM API call failed and no response was received.")
+                    raise RuntimeError(f"LLM API call or parsing failed permanently: {e}")
 
-        if not response_text:
-            raise RuntimeError("LLM API call succeeded but returned empty response.")
-
-        # Parse the JSON response
-        try:
-            lines = self._parse_json_response(response_text)
-        except Exception as e:
-            logger.error(
-                f"Failed to parse LLM response as JSON. Response was: {response_text}. Error: {e}"
-            )
-            raise RuntimeError(f"Failed to parse LLM response as JSON: {e}")
-
-        # Validate that each selected line is actually a substring of ground_truth
-        valid_lines = []
-        for line in lines:
-            line_stripped = line.strip()
-            if not line_stripped:
-                continue
-            if line_stripped in ground_truth:
-                valid_lines.append(line_stripped)
-            else:
-                # Try a slightly relaxed search (e.g. normalize spaces)
-                matched = self._find_fuzzy_match(line_stripped, ground_truth)
-                if matched:
-                    valid_lines.append(matched)
-                else:
-                    logger.warning(
-                        f"LLM selected line not found in ground truth: {repr(line_stripped)}"
-                    )
-
-        if not valid_lines:
-            logger.error("LLM response did not contain any valid lines that matched the text.")
-            raise RuntimeError("LLM response did not contain any valid lines matching the ground truth.")
-
-        return valid_lines
+        raise RuntimeError("LLM API call failed and no response was received.")
 
     def _parse_json_response(self, response_text: str) -> list[str]:
         """Parse JSON array from LLM response, stripping markdown fences if present."""
