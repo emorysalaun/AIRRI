@@ -155,7 +155,7 @@ The function `filter_clean_manifest()` keeps only entries where `image_name` con
 
 **Source**: `llm/line_selector.py` — `LLMLineSelector.select_important_lines()`
 
-For each manifest entry, the pipeline sends the `ground_truth` text to a language model (default: `google/gemma-4-31B-it:fastest` via the Hugging Face Inference API) and asks it to return the verbatim lines that an LLM would need in order to complete the assignment.
+For each manifest entry, the pipeline sends the `ground_truth` text to a language model (default: `Qwen/Qwen3.6-35B-A3B:fastest` via the Hugging Face Inference API) and asks it to return the verbatim lines that an LLM would need in order to complete the assignment.
 
 **What the prompt tells the LLM to select:**
 - What the student is being asked to do
@@ -484,7 +484,7 @@ Both functions return a percentage in the range `[0, 100]`.
 | `dataset_root` | `Path` | `<repo>/dataset/` | Base path for dataset directories |
 | `datasets` | `list[dict]` | UCONN + 8and12 | Dataset entries with `name` and `manifest` path |
 | `output_dir` | `Path` | `adversarial/output/` | Where all output files are written |
-| `llm_model` | `str` | `"google/gemma-4-31B-it:fastest"` | Hugging Face model for line selection |
+| `llm_model` | `str` | `"Qwen/Qwen3.6-35B-A3B:fastest"` | Hugging Face model for line selection |
 | `llm_max_retries` | `int` | `3` | Max API retries before falling back to all lines |
 | `render_font_path` | `str or None` | `None` | Override font path (None uses system defaults) |
 | `render_font_size` | `int` | `12` | Font size in points |

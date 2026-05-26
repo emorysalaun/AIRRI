@@ -20,7 +20,7 @@ class LLMLineSelector:
 
     def __init__(
         self,
-        model: str = "google/gemma-4-31B-it:fastest",
+        model: str = "Qwen/Qwen3.6-35B-A3B:fastest",
         max_retries: int = 3,
         retry_delay: float = 2.0,
     ):
@@ -40,8 +40,9 @@ class LLMLineSelector:
 
         Returns:
             A list of important lines/sentences exactly as they appear in ground_truth.
-            If the API call fails or returns invalid results, falls back to returning
-            all non-empty lines of ground_truth.
+
+        Raises:
+            RuntimeError: If the API call fails, returns an invalid response, or selects no valid lines.
         """
         ground_truth = ground_truth.strip()
         if not ground_truth:
@@ -104,20 +105,20 @@ Assignment text:
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delay * (2**attempt))
                 else:
-                    logger.error("LLM API call failed. Falling back to all lines.")
-                    return self._fallback_lines(ground_truth)
+                    logger.error("LLM API call failed after all retries.")
+                    raise RuntimeError("LLM API call failed and no response was received.")
 
         if not response_text:
-            return self._fallback_lines(ground_truth)
+            raise RuntimeError("LLM API call succeeded but returned empty response.")
 
         # Parse the JSON response
         try:
             lines = self._parse_json_response(response_text)
         except Exception as e:
-            logger.warning(
+            logger.error(
                 f"Failed to parse LLM response as JSON. Response was: {response_text}. Error: {e}"
             )
-            return self._fallback_lines(ground_truth)
+            raise RuntimeError(f"Failed to parse LLM response as JSON: {e}")
 
         # Validate that each selected line is actually a substring of ground_truth
         valid_lines = []
@@ -138,14 +139,10 @@ Assignment text:
                     )
 
         if not valid_lines:
-            logger.warning("LLM response did not contain any valid lines. Falling back.")
-            return self._fallback_lines(ground_truth)
+            logger.error("LLM response did not contain any valid lines that matched the text.")
+            raise RuntimeError("LLM response did not contain any valid lines matching the ground truth.")
 
         return valid_lines
-
-    def _fallback_lines(self, ground_truth: str) -> list[str]:
-        """Graceful fallback: returns all non-empty lines from the ground truth."""
-        return [line.strip() for line in ground_truth.splitlines() if line.strip()]
 
     def _parse_json_response(self, response_text: str) -> list[str]:
         """Parse JSON array from LLM response, stripping markdown fences if present."""
