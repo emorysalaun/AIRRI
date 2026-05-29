@@ -89,8 +89,19 @@ def _tensor_to_pil(tensor):
     return Image.fromarray(arr)
 
 
-def _run_ocr_on_image(pil_image, engine_name, work_dir):
+def run_ocr_on_pil(pil_image, engine_name, work_dir=None):
     """Save image to work_dir, run OCR engine, return extracted text."""
+    if engine_name not in ENGINE_FNS:
+        raise ValueError(
+            f"Unknown engine '{engine_name}'. Available: {list(ENGINE_FNS)}"
+        )
+
+    cleanup = False
+    if work_dir is None:
+        temp_dir = "/dev/shm" if os.path.exists("/dev/shm") else None
+        work_dir = tempfile.mkdtemp(prefix="ocr_run_pil_", dir=temp_dir)
+        cleanup = True
+
     in_dir = Path(work_dir) / "input"
     out_dir = Path(work_dir) / "output"
     in_dir.mkdir(parents=True, exist_ok=True)
@@ -102,9 +113,14 @@ def _run_ocr_on_image(pil_image, engine_name, work_dir):
     ENGINE_FNS[engine_name](in_dir, out_dir)
 
     txt_path = out_dir / "query.txt"
+    extracted_text = ""
     if txt_path.exists():
-        return txt_path.read_text(encoding="utf-8")
-    return ""
+        extracted_text = txt_path.read_text(encoding="utf-8")
+
+    if cleanup:
+        shutil.rmtree(work_dir, ignore_errors=True)
+
+    return extracted_text
 
 
 class OCRModelWrapper:
@@ -132,14 +148,7 @@ class OCRModelWrapper:
         self.target_threshold = None
 
     def __call__(self, image_tensor):
-        """Run OCR on image_tensor and return 2-class pseudo-logits.
-
-        Args:
-            image_tensor: (N,C,H,W) or (C,H,W) float tensor in [0,1]
-
-        Returns:
-            torch.Tensor of shape (N, 2)
-        """
+        """Run OCR on image_tensor and return 2-class pseudo-logits."""
         if image_tensor.dim() == 3:
             image_tensor = image_tensor.unsqueeze(0)
 
@@ -148,7 +157,7 @@ class OCRModelWrapper:
 
         for i in range(batch_size):
             pil_img = _tensor_to_pil(image_tensor[i])
-            ocr_text = _run_ocr_on_image(pil_img, self.engine_name, self._work_dir)
+            ocr_text = run_ocr_on_pil(pil_img, self.engine_name, self._work_dir)
             accuracy = evaluate_text_pair(ocr_text, self.ground_truth)
             self._query_count += 1
 

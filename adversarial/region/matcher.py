@@ -36,22 +36,20 @@ def match_semantic_to_visual(
     if not full_text or not rendered.lines:
         return []
 
-    # 1. Map each visual line to its character start and end index in full_text
+    # Map each visual line to its character start and end index in full_text
     line_char_ranges = []
     char_offset = 0
     for vl in rendered.lines:
         start = full_text.find(vl.text, char_offset)
         if start == -1:
-            # Fallback to search from beginning if sequential search fails due to wrap artifacts
             start = full_text.find(vl.text)
             if start == -1:
-                # If still not found, guess based on current offset
                 start = char_offset
         end = start + len(vl.text)
         line_char_ranges.append((start, end, vl))
         char_offset = end
 
-    # 2. Map each semantic line to visual lines by character overlap
+    # Map each semantic line to visual lines by character overlap
     matched_regions = []
     for sem_line in semantic_lines:
         sem_line_stripped = sem_line.strip()
@@ -60,10 +58,8 @@ def match_semantic_to_visual(
 
         sem_start = full_text.find(sem_line_stripped)
         if sem_start == -1:
-            # Try fuzzy search if exact match fails (e.g. minor whitespace differences)
+            # Try normalized search if exact match fails
             normalized_sem = "".join(sem_line_stripped.split())
-            sem_start = -1
-            # Simple sliding window lookup or substring search on normalized text
             for i in range(len(full_text)):
                 candidate = "".join(full_text[i : i + len(sem_line_stripped) * 2].split())
                 if candidate.startswith(normalized_sem):
@@ -81,7 +77,6 @@ def match_semantic_to_visual(
         # Find all visual lines overlapping with the character range [sem_start, sem_end]
         matched_visual = []
         for ls, le, vl in line_char_ranges:
-            # Overlap condition for intervals [ls, le] and [sem_start, sem_end]
             if max(ls, sem_start) < min(le, sem_end):
                 matched_visual.append(vl)
 
@@ -95,7 +90,7 @@ def match_semantic_to_visual(
         y2 = max(vl.bbox[3] for vl in matched_visual)
         union_bbox = (x1, y1, x2, y2)
 
-        # Concatenate text of matched visual lines as the per-line ground truth for this region
+        # Concatenate text of matched visual lines as the per-line ground truth
         per_line_gt = " ".join(vl.text for vl in matched_visual)
 
         matched_regions.append(

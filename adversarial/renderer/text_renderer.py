@@ -1,21 +1,15 @@
 """Text-to-image rendering with per-line bounding box tracking.
 
 Renders ground truth text into clean images while recording the exact
-pixel coordinates of every visual line.  The bounding boxes are used
-downstream to crop individual lines, run per-line adversarial attacks,
-and stitch adversarial regions back into the original clean image.
+pixel coordinates of every visual line. Monospace font candidates are
+resolved automatically.
 """
 
 import textwrap
 from dataclasses import dataclass, field
 from pathlib import Path
-
 from PIL import Image, ImageDraw, ImageFont
 
-
-# ---------------------------------------------------------------------------
-#  Data classes
-# ---------------------------------------------------------------------------
 
 @dataclass
 class RenderedLine:
@@ -36,11 +30,7 @@ class RenderedImage:
     image_name: str = ""
 
 
-# ---------------------------------------------------------------------------
-#  Font resolution
-# ---------------------------------------------------------------------------
-
-# Ordered preference list for monospace fonts available on Linux.
+# Monospace fonts preferred on Linux platforms.
 _FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
     "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
@@ -50,12 +40,12 @@ _FONT_CANDIDATES = [
 
 
 def _resolve_font(font_path: str | None, font_size: int) -> ImageFont.FreeTypeFont:
-    """Return a PIL font object, trying *font_path* first then fallbacks."""
+    """Return a PIL font object, trying the specified path first then fallbacks."""
     if font_path is not None:
         try:
             return ImageFont.truetype(font_path, font_size)
         except OSError:
-            pass  # fall through to candidates
+            pass
 
     for candidate in _FONT_CANDIDATES:
         try:
@@ -63,29 +53,11 @@ def _resolve_font(font_path: str | None, font_size: int) -> ImageFont.FreeTypeFo
         except OSError:
             continue
 
-    # Last resort — Pillow's built-in bitmap font (no size control).
     return ImageFont.load_default()
 
 
-# ---------------------------------------------------------------------------
-#  TextRenderer
-# ---------------------------------------------------------------------------
-
 class TextRenderer:
-    """Render ground-truth text into a clean image with tracked line positions.
-
-    Parameters match the styling observed in the UCONN / 8-and-12 dataset
-    renders by default (DejaVu Sans Mono ~12pt, ~90-char wrap, margins ≈ 15 px).
-    Override via constructor or :pyclass:`PipelineConfig`.
-
-    Usage::
-
-        renderer = TextRenderer()
-        rendered = renderer.render(ground_truth_text, "1_1_clean.png")
-        rendered.image.save("output/clean_renders/1_1_clean.png")
-        for rl in rendered.lines:
-            print(rl.line_index, rl.bbox, rl.text[:40])
-    """
+    """Render ground-truth text into a clean image with tracked line positions."""
 
     def __init__(
         self,
@@ -108,22 +80,11 @@ class TextRenderer:
         self.bg_color = bg_color
         self.text_color = text_color
 
-    # ------------------------------------------------------------------
-    #  Public API
-    # ------------------------------------------------------------------
-
     def render(self, text: str, image_name: str = "render.png") -> RenderedImage:
-        """Render *text* into an image and return a :class:`RenderedImage`.
-
-        The rendering process:
-        1. Wrap the text into visual lines using :func:`textwrap.wrap`.
-        2. Measure each line to determine image dimensions.
-        3. Draw each line onto a fresh image and record its bounding box.
-        """
+        """Render text into an image and return a RenderedImage."""
         wrapped_lines = textwrap.wrap(text, width=self.wrap_width)
 
         if not wrapped_lines:
-            # Edge-case: empty text produces a small blank image.
             img = Image.new(
                 "RGB",
                 (self.margin_x * 2, self.margin_top + self.margin_bottom),
@@ -133,7 +94,7 @@ class TextRenderer:
                 image=img, lines=[], full_text=text, image_name=image_name
             )
 
-        # -- Measure -------------------------------------------------------
+        # Measure dimensions
         dummy = Image.new("RGB", (1, 1), color=self.bg_color)
         draw_dummy = ImageDraw.Draw(dummy)
 
@@ -150,11 +111,11 @@ class TextRenderer:
         img_h = (
             self.margin_top
             + sum(h + self.line_padding for h in line_heights)
-            - self.line_padding  # no trailing padding after last line
+            - self.line_padding
             + self.margin_bottom
         )
 
-        # -- Draw and track ------------------------------------------------
+        # Draw and track coordinates
         img = Image.new("RGB", (img_w, img_h), color=self.bg_color)
         draw = ImageDraw.Draw(img)
 
@@ -169,7 +130,6 @@ class TextRenderer:
 
             draw.text((x1, y1), line_text, fill=self.text_color, font=self.font)
 
-            # Use textbbox at the actual draw position for a tight box.
             actual_bbox = draw.textbbox((x1, y1), line_text, font=self.font)
             x2 = actual_bbox[2]
             y2 = actual_bbox[3]
@@ -190,7 +150,7 @@ class TextRenderer:
     def render_and_save(
         self, text: str, output_dir: Path, image_name: str = "render.png"
     ) -> RenderedImage:
-        """Render text and save the image to *output_dir / image_name*."""
+        """Render text and save the image to output_dir / image_name."""
         rendered = self.render(text, image_name)
         output_dir.mkdir(parents=True, exist_ok=True)
         rendered.image.save(output_dir / image_name)

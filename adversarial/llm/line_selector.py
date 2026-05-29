@@ -28,7 +28,6 @@ class LLMLineSelector:
         self.max_retries = max_retries
         self.retry_delay = retry_delay
 
-        # Check API token
         hf_token = os.environ.get("HF_TOKEN")
         if not hf_token:
             logger.warning("HF_TOKEN environment variable not set. LLM requests will fail unless API is public.")
@@ -42,7 +41,7 @@ class LLMLineSelector:
             A list of important lines/sentences exactly as they appear in ground_truth.
 
         Raises:
-            RuntimeError: If the API call fails, returns an invalid response, or selects no valid lines.
+            RuntimeError: If the API call fails or selects no valid lines.
         """
         ground_truth = ground_truth.strip()
         if not ground_truth:
@@ -88,7 +87,6 @@ Assignment text:
             {"role": "user", "content": [{"type": "text", "text": prompt}]}
         ]
 
-        response_text = ""
         for attempt in range(self.max_retries):
             try:
                 completion = self.client.chat.completions.create(
@@ -98,12 +96,10 @@ Assignment text:
                 )
                 response_text = completion.choices[0].message.content
                 if not response_text:
-                    raise ValueError("LLM API succeeded but returned an empty response.")
+                    raise ValueError("LLM API returned an empty response.")
 
-                # Parse the JSON response
                 lines = self._parse_json_response(response_text)
 
-                # Validate that each selected line is actually a substring of ground_truth
                 valid_lines = []
                 for line in lines:
                     line_stripped = line.strip()
@@ -112,7 +108,6 @@ Assignment text:
                     if line_stripped in ground_truth:
                         valid_lines.append(line_stripped)
                     else:
-                        # Try a slightly relaxed search (e.g. normalize spaces)
                         matched = self._find_fuzzy_match(line_stripped, ground_truth)
                         if matched:
                             valid_lines.append(matched)
@@ -133,8 +128,7 @@ Assignment text:
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delay * (2**attempt))
                 else:
-                    logger.error("LLM API call failed after all retries.")
-                    raise RuntimeError(f"LLM API call or parsing failed permanently: {e}")
+                    raise RuntimeError(f"LLM API call failed permanently: {e}")
 
         raise RuntimeError("LLM API call failed and no response was received.")
 
@@ -142,11 +136,9 @@ Assignment text:
         """Parse JSON array from LLM response, stripping markdown fences if present."""
         clean_text = response_text.strip()
         if clean_text.startswith("```"):
-            # Strip start fence
             first_newline = clean_text.find("\n")
             if first_newline != -1:
                 clean_text = clean_text[first_newline:].strip()
-            # Strip end fence
             if clean_text.endswith("```"):
                 clean_text = clean_text[:-3].strip()
 
@@ -157,12 +149,10 @@ Assignment text:
 
     def _find_fuzzy_match(self, line: str, ground_truth: str) -> str | None:
         """Find a substring in ground_truth that matches line, ignoring whitespace differences."""
-        # Simple whitespace normalization comparison
         normalized_line = "".join(line.split())
         if not normalized_line:
             return None
 
-        # Slide a window over ground_truth split lines or words to see if we get a match
         lines = [l.strip() for l in ground_truth.splitlines() if l.strip()]
         for l in lines:
             if normalized_line in "".join(l.split()):

@@ -1,3 +1,4 @@
+
 """Pipeline result reporting — score logging and CSV output."""
 
 import csv
@@ -5,11 +6,26 @@ from pathlib import Path
 
 
 class PipelineReporter:
-    """Buffers per-image scores and writes them to structured logs and CSV."""
+    """Manages appending results directly to a CSV file."""
 
-    def __init__(self, logger):
-        self.logger = logger
-        self.all_rows = []
+    def __init__(self, csv_path: Path):
+        self.csv_path = Path(csv_path)
+        self.fieldnames = [
+            "image_name",
+            "engine",
+            "eps",
+            "attack",
+            "eval_scope",
+            "target_line",
+            "cer",
+            "wer",
+        ]
+        # Write header if file does not exist
+        if not self.csv_path.exists():
+            self.csv_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.csv_path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=self.fieldnames)
+                writer.writeheader()
 
     def record_row(
         self,
@@ -22,7 +38,7 @@ class PipelineReporter:
         cer: float,
         wer: float,
     ):
-        """Record a single score row for the CSV and write it immediately."""
+        """Record a single score row and write it immediately to disk."""
         img_name = (
             image_name.replace(".txt", ".png")
             if image_name.endswith(".txt")
@@ -38,81 +54,6 @@ class PipelineReporter:
             "cer": round(cer, 4),
             "wer": round(wer, 4),
         }
-        self.all_rows.append(row)
-
-        # Immediate flush to disk to avoid "no results until finished"
-        csv_path = self.logger.log_dir.parent / "all_scores.csv"
-        csv_path.parent.mkdir(parents=True, exist_ok=True)
-        fieldnames = [
-            "image_name",
-            "engine",
-            "eps",
-            "attack",
-            "eval_scope",
-            "target_line",
-            "cer",
-            "wer",
-        ]
-        file_exists = csv_path.exists()
-        with open(csv_path, "a", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            if not file_exists:
-                writer.writeheader()
+        with open(self.csv_path, "a", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=self.fieldnames)
             writer.writerow(row)
-
-    def record_scores(
-        self, engine_name: str, eps: float, cer_scores: dict, wer_scores: dict
-    ):
-        """Log score summary and buffer rows for CSV output (backward compatibility)."""
-        if not cer_scores:
-            self.logger.warning("No scores computed")
-            return
-
-        cer_vals = list(cer_scores.values())
-        wer_vals = list(wer_scores.values())
-        avg_cer = sum(cer_vals) / len(cer_vals)
-        avg_wer = sum(wer_vals) / len(wer_vals) if wer_vals else 0.0
-
-        self.logger.info(f"Average CER: {avg_cer:.2f}%")
-        self.logger.info(f"Average WER: {avg_wer:.2f}%")
-        self.logger.info(f"Scored {len(cer_scores)} images")
-
-        for name in cer_scores:
-            self.logger.debug(
-                f"  {name}: CER={cer_scores[name]:.2f}% WER={wer_scores.get(name, 0):.2f}%"
-            )
-            self.record_row(
-                image_name=name,
-                engine_name=engine_name,
-                eps=eps,
-                attack_name="unknown",
-                eval_scope="full",
-                target_line="all",
-                cer=cer_scores[name],
-                wer=wer_scores.get(name, 0.0),
-            )
-
-    def write_csv(self, csv_path: Path):
-        """Flush buffered scores to CSV and clear the buffer."""
-        if not self.all_rows:
-            return
-
-        csv_path.parent.mkdir(parents=True, exist_ok=True)
-        fieldnames = [
-            "image_name",
-            "engine",
-            "eps",
-            "attack",
-            "eval_scope",
-            "target_line",
-            "cer",
-            "wer",
-        ]
-
-        with open(csv_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(self.all_rows)
-
-        self.logger.info(f"Results CSV → {csv_path}")
-        self.all_rows.clear()

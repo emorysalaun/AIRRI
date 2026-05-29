@@ -1,9 +1,13 @@
+"""Configuration settings for the adversarial pipeline."""
+
 from dataclasses import dataclass, field
 from pathlib import Path
 
 
 @dataclass
 class PipelineConfig:
+    """Configuration options for adversarial dataset generation and attack execution."""
+
     attacks: list[str] = field(
         default_factory=lambda: ["smoo", "adba", "rays", "surfree"]
     )
@@ -79,7 +83,7 @@ class PipelineConfig:
     render_bg_color: str = "white"
     render_text_color: str = "black"
 
-    # Stitching and evaluation configurations
-    stitch_mode: str = "hard"  # "hard" mask compositing
-    eval_mode: str = "both"    # "full", "target", or "both"
-
+    @property
+    def dataset_manifest_path(self) -> Path:
+        """The path to the generated dataset manifest JSON file."""
+        return self.output_dir / "dataset_manifest.json"

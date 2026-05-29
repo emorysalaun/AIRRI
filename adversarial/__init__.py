@@ -1,7 +1,7 @@
 """AIRRI Adversarial Evaluation Pipeline.
 
 Subpackages:
-    pipeline  — Core orchestration (runner, dispatcher, reporter)
+    pipeline  — Attack dispatching and result reporting
     engines   — OCR engine wrappers for black-box attacks
     data      — Manifest loading and image I/O
     attacks   — Attack wrapper registry (SMOO, ADBA, RayS, SurFree, L0)

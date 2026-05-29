@@ -3,9 +3,8 @@
 from .handler import (
     load_manifest,
     filter_clean_manifest,
-    get_render_images,
-    images_to_dataloader,
-    save_adversarial_images,
+    load_dataset_manifest,
+    save_dataset_manifest,
     pil_to_dataloader,
     save_composite_image,
 )
@@ -13,10 +12,8 @@ from .handler import (
 __all__ = [
     "load_manifest",
     "filter_clean_manifest",
-    "get_render_images",
-    "images_to_dataloader",
-    "save_adversarial_images",
+    "load_dataset_manifest",
+    "save_dataset_manifest",
     "pil_to_dataloader",
     "save_composite_image",
 ]
-

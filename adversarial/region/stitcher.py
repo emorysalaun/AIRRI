@@ -2,10 +2,6 @@
 
 Replaces selected bounding-box regions in a clean image with adversarial
 crops while preserving all other pixels exactly.
-
-Mathematical guarantee (hard mask):
-    I_composite(y, x, c) = I_adv_crop(y-y1, x-x1, c)   if (x1 ≤ x < x2) ∧ (y1 ≤ y < y2)
-    I_composite(y, x, c) = I_clean(y, x, c)             otherwise
 """
 
 import numpy as np
@@ -16,22 +12,15 @@ def stitch_adversarial(
     adv_crop: np.ndarray,
     bbox: tuple[int, int, int, int],
 ) -> np.ndarray:
-    """Replace the *bbox* region of *clean_image* with *adv_crop* (hard mask).
+    """Replace the bbox region of clean_image with adv_crop (hard mask).
 
-    Parameters
-    ----------
-    clean_image : np.ndarray
-        Original clean image, shape ``(H, W, 3)``, float32, values in [0, 1].
-    adv_crop : np.ndarray
-        Adversarial crop, shape ``(h, w, 3)``, float32, values in [0, 1].
-    bbox : tuple
-        ``(x1, y1, x2, y2)`` — the region in *clean_image* that *adv_crop*
-        replaces.  Uses Python-slice convention (exclusive end).
+    Args:
+        clean_image: Original clean image, shape (H, W, 3), float32, [0, 1].
+        adv_crop: Adversarial crop, shape (h, w, 3), float32, [0, 1].
+        bbox: (x1, y1, x2, y2) — the region in clean_image that adv_crop replaces.
 
-    Returns
-    -------
-    np.ndarray
-        Composite image, same shape and dtype as *clean_image*.
+    Returns:
+        Composite image, same shape and dtype as clean_image.
     """
     x1, y1, x2, y2 = bbox
     H, W = clean_image.shape[:2]
@@ -65,22 +54,12 @@ def stitch_multi_region(
 ) -> np.ndarray:
     """Stitch multiple adversarial crops into a clean image.
 
-    Regions are applied sequentially.  For non-overlapping bounding
-    boxes (the normal case for text lines in single-column documents)
-    the order does not matter.
+    Args:
+        clean_image: Original clean image, shape (H, W, 3), float32, [0, 1].
+        adv_crops: One adversarial crop per selected line.
+        bboxes: One (x1, y1, x2, y2) per crop, same order as adv_crops.
 
-    Parameters
-    ----------
-    clean_image : np.ndarray
-        Original clean image, shape ``(H, W, 3)``, float32, [0, 1].
-    adv_crops : list[np.ndarray]
-        One adversarial crop per selected line.
-    bboxes : list[tuple]
-        One ``(x1, y1, x2, y2)`` per crop, same order as *adv_crops*.
-
-    Returns
-    -------
-    np.ndarray
+    Returns:
         Composite image with all adversarial regions stitched in.
     """
     if len(adv_crops) != len(bboxes):

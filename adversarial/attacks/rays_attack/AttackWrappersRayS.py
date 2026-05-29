@@ -6,11 +6,11 @@ import torch
 import utils
 import time
 import torch.nn.functional as F
-from utils.data_utils import DataLoaderToTensor, TensorToDataLoader
+from utils.data_utils import dataloader_to_tensor, tensor_to_dataloader
 
 
 def RaySAttack(device, model, epsMax, queryLimit, cleanLoader):
-    xClean, yClean = DataLoaderToTensor(cleanLoader)
+    xClean, yClean = dataloader_to_tensor(cleanLoader)
     rayS = RayS(device, model, epsilon=epsMax, order=np.inf)
     xAdv = torch.zeros(
         (xClean.shape[0], xClean.shape[1], xClean.shape[2], xClean.shape[3])
@@ -44,8 +44,8 @@ def RaySAttack(device, model, epsMax, queryLimit, cleanLoader):
         end = time.time()
         print("Time Elapsed:", end - start)
     # Put solution in dataloader and return
-    advLoader = TensorToDataLoader(
-        xAdv, yClean, transforms=None, batchSize=cleanLoader.batch_size, randomizer=None
+    advLoader = tensor_to_dataloader(
+        xAdv, yClean, transforms=None, batch_size=cleanLoader.batch_size, randomizer=None
     )
     return advLoader
 

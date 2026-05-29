@@ -2,10 +2,10 @@ import numpy as np
 import torch
 
 from utils.data_utils import (
-    DataLoaderToTensor,
-    TensorToNumpy,
-    NumpyToTensor,
-    TensorToDataLoader,
+    dataloader_to_tensor,
+    tensor_to_numpy,
+    numpy_to_tensor,
+    tensor_to_dataloader,
     get_predictions,
 )
 from . import L0_Utils
@@ -32,8 +32,8 @@ def L0_Sigma_PGD_AttackWrapper(
 
     total_samples = len(dataLoader.dataset)
 
-    x_tensor, y_tensor = DataLoaderToTensor(dataLoader)
-    all_original_examples, all_labels = TensorToNumpy(x_tensor, y_tensor)
+    x_tensor, y_tensor = dataloader_to_tensor(dataLoader)
+    all_original_examples, all_labels = tensor_to_numpy(x_tensor, y_tensor)
 
     # Compute sigma map
     sigma = L0_Utils.sigma_map(all_original_examples)
@@ -53,7 +53,7 @@ def L0_Sigma_PGD_AttackWrapper(
 
         batch_start_idx = 0
         for batch_idx, (x_batch, y_batch) in enumerate(dataLoader):
-            x_numpy, y_numpy = TensorToNumpy(x_batch, y_batch)
+            x_numpy, y_numpy = tensor_to_numpy(x_batch, y_batch)
             batch_size = x_numpy.shape[0]
             batch_end_idx = batch_start_idx + batch_size
 
@@ -101,8 +101,8 @@ def L0_Sigma_PGD_AttackWrapper(
     print(f"Maximum perturbation size: {max_perturbation:.5f}")
     print(f"{'=' * 70}\n")
 
-    xAdv, yClean = NumpyToTensor(all_adv_examples, all_labels)
-    advLoader = TensorToDataLoader(
-        xAdv, yClean, transforms=None, batchSize=dataLoader.batch_size, randomizer=None
+    xAdv, yClean = numpy_to_tensor(all_adv_examples, all_labels)
+    advLoader = tensor_to_dataloader(
+        xAdv, yClean, transforms=None, batch_size=dataLoader.batch_size, randomizer=None
     )
     return advLoader

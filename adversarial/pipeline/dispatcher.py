@@ -4,13 +4,7 @@
 def dispatch_attack(
     attack_name, attack_fn, model, device, data_loader, eps, config_overrides
 ):
-    """Call the appropriate attack wrapper with the right signature.
-
-    Each attack has its own calling convention. This function maps
-    the unified (attack_name, eps, config_overrides) interface to the
-    specific argument layout each wrapper expects.
-    """
-
+    """Call the appropriate attack wrapper with the correct signature."""
     if attack_name == "smoo":
         cfg = {"eps": int(eps) if eps >= 1 else int(eps * 1024)}
         cfg.update(config_overrides)
@@ -25,7 +19,6 @@ def dispatch_attack(
         cfg = {"l2_threshold": eps}
         cfg.update(config_overrides)
         result = attack_fn(model, device, data_loader, cfg)
-        # SurFree returns (advLoader, adv_blobs) — extract the loader
         if isinstance(result, tuple):
             return result[0]
         return result

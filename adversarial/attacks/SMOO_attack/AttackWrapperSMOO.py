@@ -1,4 +1,3 @@
-
 # AttackWrapperSMOO.py
 
 """
@@ -12,10 +11,10 @@ import os
 from .MOAA.MOAA import Attack
 from .LossFunctions import UnTargeted
 from utils.data_utils import (
-    DataLoaderToTensor,
-    TensorToNumpy as TensorToNumpyHWC,
-    NumpyToTensor as NumpyHWCToTensor,
-    TensorToDataLoader,
+    dataloader_to_tensor,
+    tensor_to_numpy as TensorToNumpyHWC,
+    numpy_to_tensor as NumpyHWCToTensor,
+    tensor_to_dataloader,
 )
 
 
@@ -48,7 +47,7 @@ def SMOO_AttackWrapper(model, device, dataLoader, config):
     os.makedirs(save_directory, exist_ok=True)
     
     # Convert dataLoader to tensors, then to numpy HWC (using utils)
-    xTensor, yTensor = DataLoaderToTensor(dataLoader)
+    xTensor, yTensor = dataloader_to_tensor(dataLoader)
     x_test, y_test = TensorToNumpyHWC(xTensor, yTensor)
     
     num_samples = len(x_test)
@@ -130,11 +129,11 @@ def SMOO_AttackWrapper(model, device, dataLoader, config):
     adv_images_tensor, labels_tensor = NumpyHWCToTensor(adv_images_np, labels_np)
     
     # Create adversarial DataLoader
-    advLoader = TensorToDataLoader(
+    advLoader = tensor_to_dataloader(
         adv_images_tensor, 
         labels_tensor, 
         transforms=None, 
-        batchSize=dataLoader.batch_size, 
+        batch_size=dataLoader.batch_size, 
         randomizer=None
     )
     
