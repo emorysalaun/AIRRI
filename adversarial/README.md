@@ -32,45 +32,34 @@ This pipeline takes a different approach: it asks an LLM to identify which lines
 
 ## 2. Pipeline Overview
 
-The pipeline runs in a fixed sequence of steps for each dataset. Here is the full flow:
+The pipeline is split into two sequential stages:
+
+1. **Dataset Creation Stage (`dataset_creation.py`):** Runs the LLM line selection, renders clean text-to-image outputs, crops/saves target region crops, and writes the `dataset_manifest.json` metadata catalog.
+2. **Attack Execution Stage (`run_ocr.py`):** Loads the prepared `dataset_manifest.json` and executes attacks in parallel for a single specified OCR engine.
 
 ```mermaid
 flowchart TB
-    subgraph A["Phase 1 — Preparation"]
-        A1["Load manifest.json"] --> A2["Filter to clean entries"]
-        A2 --> A3["Query LLM for important lines<br/>(cached to disk as JSON)"]
-        A2 --> A4["Render ground truth text<br/>to clean PNG images"]
-        A4 --> A5["Crop targeted visual lines<br/>and save as separate PNG crops"]
-        A3 --> A5
+    subgraph DC["Dataset Creation (dataset_creation.py)"]
+        DC1["Load manifest.json"] --> DC2["Filter to clean entries"]
+        DC2 --> DC3["Query LLM for important lines<br/>(cached to disk as JSON)"]
+        DC2 --> DC4["Render ground truth text<br/>to clean PNG images"]
+        DC4 --> DC5["Crop targeted visual lines<br/>and save as separate PNG crops"]
+        DC3 --> DC5
+        DC5 --> DC6["Save dataset_manifest.json"]
     end
 
-    subgraph B["Phase 2 — Targeting"]
-        A5 --> B1["Map target crop images<br/>to attack dispatchers"]
+    subgraph AE["Attack Execution (run_ocr.py)"]
+        AE1["Load dataset_manifest.json"] --> AE2["Load each target line crop image from disk"]
+        AE2 --> AE3["Wrap OCR engine as<br/>2-class pseudo-classifier"]
+        AE3 --> AE4["Run black-box attack<br/>on the loaded crop image"]
+        AE4 --> AE5["Collect perturbed crop images"]
+        AE5 --> AE6["Stitch perturbed crop images<br/>back into original full clean image"]
+        AE6 --> AE7["Run OCR on full composite image & target crops"]
+        AE7 --> AE8["Compute CER & WER"]
+        AE8 --> AE9["Write scores_<engine_name>.csv"]
     end
 
-    subgraph C["Phase 3 — Attack"]
-        B1 --> C1["Load each target line crop image from disk"]
-        C1 --> C2["Wrap OCR engine as<br/>2-class pseudo-classifier"]
-        C2 --> C3["Run black-box attack<br/>on the loaded crop image"]
-        C3 --> C4["Collect perturbed crop images"]
-    end
-
-    subgraph D["Phase 4 — Reconstruction & Scoring"]
-        C4 --> D1["Stitch perturbed crop images<br/>back into original full clean image"]
-        D1 --> D2["Run OCR on full<br/>composite image"]
-        D1 --> D3["Run OCR on each<br/>target line crop"]
-        D2 --> D4["Compute CER & WER<br/>vs full ground truth"]
-        D3 --> D5["Compute CER & WER<br/>vs per-line ground truth"]
-        D4 --> D6["Write all_scores.csv"]
-        D5 --> D6
-    end
-
-    A --> B --> C --> D
-
-    style A fill:#e8f4f8,stroke:#2980b9,stroke-width:2px
-    style B fill:#fef9e7,stroke:#f39c12,stroke-width:2px
-    style C fill:#fdedec,stroke:#e74c3c,stroke-width:2px
-    style D fill:#eafaf1,stroke:#27ae60,stroke-width:2px
+    DC -->|Produces manifest & crops| AE
 ```
 
 ---
@@ -81,52 +70,45 @@ Each box below is a Python module in the `adversarial/` directory. Arrows show i
 
 ```mermaid
 flowchart LR
-    main["main.py"] --> config["config.py"]
-    main --> runner["pipeline/runner.py"]
-    runner --> config
-    runner --> llm["llm/line_selector.py"]
-    runner --> renderer["renderer/text_renderer.py"]
-    runner --> matcher["region/matcher.py"]
-    runner --> stitcher["region/stitcher.py"]
-    runner --> wrapper["engines/ocr_wrapper.py"]
-    runner --> handler["data/handler.py"]
-    runner --> dispatcher["pipeline/dispatcher.py"]
-    runner --> reporter["pipeline/reporter.py"]
-    runner --> score["evaluation/score.py"]
+    dataset["dataset_creation.py"] --> config["config.py"]
+    dataset --> llm["llm/line_selector.py"]
+    dataset --> renderer["renderer/text_renderer.py"]
+    dataset --> matcher["region/matcher.py"]
+    dataset --> handler["data/handler.py"]
+
+    run_ocr["run_ocr.py"] --> config
+    run_ocr --> handler
+    run_ocr --> wrapper["engines/ocr_wrapper.py"]
+    run_ocr --> dispatcher["pipeline/dispatcher.py"]
+    run_ocr --> stitcher["region/stitcher.py"]
+    run_ocr --> reporter["pipeline/reporter.py"]
+    run_ocr --> score["evaluation/score.py"]
+
+    run_tess["run_tesseract.py"] --> run_ocr
+    run_easy["run_easyocr.py"] --> run_ocr
+    run_got["run_gotocr.py"] --> run_ocr
+    run_tr["run_trocr.py"] --> run_ocr
+
     dispatcher --> attacks["attacks/__init__.py"]
     wrapper --> score
-
-    style main fill:#d5f5e3,stroke:#27ae60
-    style runner fill:#d6eaf8,stroke:#2980b9
-    style llm fill:#fdebd0,stroke:#e67e22
-    style renderer fill:#fdebd0,stroke:#e67e22
-    style matcher fill:#fdebd0,stroke:#e67e22
-    style stitcher fill:#fdebd0,stroke:#e67e22
-    style wrapper fill:#fadbd8,stroke:#e74c3c
-    style attacks fill:#fadbd8,stroke:#e74c3c
-    style dispatcher fill:#d6eaf8,stroke:#2980b9
-    style reporter fill:#d6eaf8,stroke:#2980b9
-    style handler fill:#fdebd0,stroke:#e67e22
-    style score fill:#e8daef,stroke:#8e44ad
-    style config fill:#d5f5e3,stroke:#27ae60
 ```
 
 | Module | File | Purpose |
 |:---|:---|:---|
-| Entry point | `main.py` | Creates `PipelineConfig`, creates `AdversarialPipeline`, calls `pipeline.run()` |
-| Config | `config.py` | Dataclass holding all pipeline settings (attacks, engines, epsilons, rendering params) |
-| Runner | `pipeline/runner.py` | Orchestrates the full pipeline: loading, rendering, attacking, stitching, scoring |
+| Dataset Entry point | `dataset_creation.py` | Creates `PipelineConfig`, runs LLM selection, renders images, crops visual lines, saves `dataset_manifest.json` |
+| Attack Entry point | `run_ocr.py` | Load prepared `dataset_manifest.json` and runs all registered attack/epsilon configs for a single specified OCR engine |
+| Engine Wrappers | `run_*.py` | Thin wrapper scripts (`run_tesseract.py`, `run_easyocr.py`, `run_gotocr.py`, `run_trocr.py`) that call `run_ocr.py` with hardcoded engine names |
+| Config | `config.py` | Dataclass holding all pipeline settings (attacks, engines, epsilons, rendering parameters) |
 | Dispatcher | `pipeline/dispatcher.py` | Maps each attack name to its specific function signature |
-| Reporter | `pipeline/reporter.py` | Buffers per-image score rows in memory, writes them to CSV at the end |
+| Reporter | `pipeline/reporter.py` | Appends per-image score rows immediately to a CSV file (`scores_<engine_name>.csv`) |
 | LLM Selector | `llm/line_selector.py` | Calls the Hugging Face Inference API to select important text excerpts |
 | Renderer | `renderer/text_renderer.py` | Draws text onto images using PIL, records bounding boxes for each visual line |
 | Matcher | `region/matcher.py` | Maps LLM-selected text excerpts to visual line bounding boxes |
-| Detector | `region/detector.py` | Detects text lines in images using horizontal projection profiles |
 | Stitcher | `region/stitcher.py` | Pastes perturbed crops back into the clean image at their bounding boxes |
-| OCR Wrapper | `engines/ocr_wrapper.py` | Wraps OCR engines as 2-class classifiers for use with attack libraries |
-| Data Handler | `data/handler.py` | Loads manifests, converts images to DataLoaders, saves output images |
+| OCR Wrapper | `engines/ocr_wrapper.py` | Wraps OCR engines as 2-class classifiers for use with attack libraries, exports public `run_ocr_on_pil` |
+| Data Handler | `data/handler.py` | Loads manifests, converts images to DataLoaders, saves output images, reads/writes dataset manifests |
 | Scoring | `evaluation/score.py` | Computes character-level and word-level accuracy using Levenshtein distance |
-| Attack Registry | `attacks/__init__.py` | Lazy-loads attack wrapper classes by name (SMOO, ADBA, RayS, SurFree, L0-PGD) |
+| Attack Registry | `attacks/__init__.py` | Registry for lazy-loading attack wrapper classes by name |
 
 ---
 
@@ -136,7 +118,7 @@ flowchart LR
 
 **Source**: `data/handler.py` — `load_manifest()` and `filter_clean_manifest()`
 
-The pipeline reads a JSON manifest file. Each entry has two required fields:
+The dataset creation script reads a JSON manifest file. Each entry has two required fields:
 
 ```json
 [
@@ -159,7 +141,7 @@ For each manifest entry, the pipeline sends the `ground_truth` text to a languag
 
 **What the prompt tells the LLM to select:**
 - What the student is being asked to do
-- What topic or problem must be addressed
+- What content, topic, problem, or question must be addressed
 - What deliverables are required
 - What constraints apply (format, length, citation style, etc.)
 - What evaluation criteria define success
@@ -175,7 +157,7 @@ The LLM returns a JSON array of verbatim string excerpts. Each returned excerpt 
 
 1. **Exact match**: Check if the excerpt appears as a substring of the ground truth.
 2. **Fuzzy match**: If exact match fails, normalize both strings by removing all whitespace, then try substring matching. If a match is found, the original (non-normalized) text from the ground truth is used.
-3. **Fallback**: If the API call fails after `max_retries` attempts (with exponential backoff: delay × 2^attempt), or if the response contains no valid excerpts, the selector returns every non-empty line of the ground truth. This guarantees the pipeline always has something to work with.
+3. **No Fallback**: If the API call fails after `max_retries` attempts, or if the response contains no valid excerpts, an exception is raised and the process aborts.
 
 **Caching**: Selections are saved to disk as JSON files in `<output_dir>/<dataset>/llm_selections/<image_stem>.json`. On subsequent runs, cached results are loaded instead of re-querying the API.
 
@@ -185,7 +167,7 @@ The LLM returns a JSON array of verbatim string excerpts. Each returned excerpt 
 
 **Source**: `renderer/text_renderer.py` — `TextRenderer.render()`
 
-The pipeline does not use the original dataset images. Instead, it renders the ground truth text into clean images from scratch. This gives the pipeline exact control over font, layout, and — most importantly — the precise pixel coordinates of every line.
+The pipeline renders the ground truth text into clean images from scratch. This gives the pipeline exact control over font, layout, and the precise pixel coordinates of every line.
 
 **Rendering process:**
 
@@ -204,15 +186,13 @@ The result is a `RenderedImage` object containing:
 - The full original text
 - The image filename
 
-The font resolution tries a preference list of monospace fonts (`DejaVuSansMono`, `LiberationMono`, `NimbusMonoPS`, `DejaVuSans`) and falls back to PIL's built-in bitmap font if none are available.
-
 ---
 
 ### 4.4 Semantic-to-Visual Matching
 
 **Source**: `region/matcher.py` — `match_semantic_to_visual()`
 
-This function answers the question: "Given that the LLM selected these text excerpts, which bounding boxes in the rendered image do they correspond to?"
+This function maps LLM-selected text excerpts to bounding boxes in the rendered image.
 
 The matching works by character offsets in the full text:
 
@@ -230,7 +210,7 @@ Visual line 1: chars 10..19  → bbox (15, 33, 200, 45)
 Visual line 2: chars 20..31  → bbox (15, 50, 200, 62)
 ```
 
-The search is sequential: each line's start position is found by calling `full_text.find(line.text, previous_end)`. This handles repeated substrings correctly because the search always starts after the previous line ended.
+The search is sequential: each line's start position is found by calling `full_text.find(line.text, previous_end)`.
 
 **Step 2 — For each LLM excerpt, find overlapping visual lines:**
 
@@ -253,28 +233,25 @@ y2 = max of all matched lines' y2
 
 This handles excerpts that span multiple visual lines (because `textwrap` broke a long sentence across lines).
 
-**Fallback**: If matching produces zero regions, the runner falls back to targeting every visual line in the image.
+**No Fallback**: If matching produces zero regions for an image, an error is raised immediately.
 
 ---
 
 ### 4.5 Line Cropping and Attack Execution
 
-**Source**: `pipeline/runner.py` — `_process_engine()`
+**Source**: `run_ocr.py` — `_run_attack_config()`
 
-For each matched region, the pipeline iterates over its visual lines and processes each one individually. A `processed_line_indices` set prevents the same visual line from being attacked twice (which can happen when multiple LLM excerpts overlap the same visual line).
+For each image, the attack executor loads the prepared visual line crop images from the disk location:
+`<ds_output_dir>/clean_renders/crops/<image_stem>/line_{line_index:02d}.png`
 
 For each visual line:
 
-1. **Load Crop**: Instead of dynamic in-memory cropping, the pipeline loads the standalone line crop image file from the disk location:
-   `<ds_output_dir>/clean_renders/crops/<image_stem>/line_{vl.line_index:02d}.png`
-2. **Convert to DataLoader**: The crop image is loaded and converted to a float32 tensor in `[0, 1]` range with shape `(1, 3, H, W)` and wrapped in a PyTorch `DataLoader` with a label of `1` (meaning "correctly read").
-3. **Create OCR wrapper**: An `OCRModelWrapper` is created for this specific line, with the line's text as its ground truth.
-4. **Run attack**: The attack function is called through `dispatch_attack()`, which handles the different argument conventions of each attack. The attack returns a `DataLoader` containing the perturbed image.
-5. **Extract result**: The first (and only) image is extracted from the returned DataLoader, converted from `(C, H, W)` tensor back to `(H, W, 3)` numpy array, and clipped to `[0, 1]`.
+1. **Convert to DataLoader**: The crop image is loaded and converted to a float32 tensor in `[0, 1]` range with shape `(1, 3, H, W)` and wrapped in a PyTorch `DataLoader` with a label of `1` (correctly read).
+2. **Create OCR wrapper**: An `OCRModelWrapper` is created for this specific line, with the line's text as its ground truth.
+3. **Run attack**: The attack function is called through `dispatch_attack()`, which handles the different argument conventions of each attack. The attack returns a `DataLoader` containing the perturbed image.
+4. **Extract result**: The perturbed image is extracted from the returned DataLoader, converted back to a `(H, W, 3)` numpy array, and clipped to `[0, 1]`.
 
 The attack execution is gated by a `gpu_semaphore` (see [Section 7](#7-concurrency-model)).
-
-If the attack raises an exception for a particular line, that line is skipped and the clean pixels are preserved.
 
 ---
 
@@ -282,7 +259,7 @@ If the attack raises an exception for a particular line, that line is skipped an
 
 **Source**: `region/stitcher.py` — `stitch_adversarial()` and `stitch_multi_region()`
 
-After all target lines have been attacked, the perturbed crops are pasted back into the clean image.
+After all target lines have been attacked, the perturbed crops are pasted back into the clean image background.
 
 **The rule is simple**: for each perturbed crop and its bounding box, copy the crop's pixels into the corresponding region of the clean image. Everything outside the bounding boxes stays exactly as it was.
 
@@ -292,7 +269,7 @@ composite[y1:y2, x1:x2, :] = perturbed_crop
 
 Coordinates are clamped to image bounds. The crop dimensions must match the bounding box dimensions exactly — if they don't, a `ValueError` is raised.
 
-For multiple crops, `stitch_multi_region()` applies them sequentially. Since text lines in single-column documents do not overlap, the order does not matter.
+For multiple crops, `stitch_multi_region()` applies them sequentially.
 
 The final composite is saved as a PNG to `<attack>/<eps>/<engine>/composite_images/`. Individual perturbed line crops are also saved separately to `line_crops/` for debugging.
 
@@ -300,30 +277,28 @@ The final composite is saved as a PNG to `<attack>/<eps>/<engine>/composite_imag
 
 ### 4.7 Evaluation and Scoring
 
-**Source**: `pipeline/runner.py` — inside `_process_engine()`, and `pipeline/reporter.py`
+**Source**: `run_ocr.py` — inside `_run_attack_config()`, and `pipeline/reporter.py`
 
 After stitching, the pipeline evaluates the composite image at two levels:
 
 **Level 1 — Full composite evaluation:**
-- OCR is run on the entire composite image.
+- OCR is run on the entire composite image using `run_ocr_on_pil()`.
 - The extracted text is compared against the full ground truth text.
 - CER and WER are computed and recorded with `eval_scope="full_composite"`.
 
 **Level 2 — Per-line target evaluation:**
 - For each attacked line, the pipeline crops that line's bounding box from the composite image.
-- OCR is run on just that crop.
+- OCR is run on just that crop using `run_ocr_on_pil()`.
 - The extracted text is compared against that specific line's ground truth text.
 - CER and WER are computed and recorded with `eval_scope="target_region"`.
 
-The OCR text extraction works by writing the image to a temp directory, calling the engine function, and reading the resulting `.txt` file.
-
-All score rows are buffered in memory by `PipelineReporter` and flushed to `all_scores.csv` at the end of the pipeline run.
+All score rows are recorded immediately to the CSV file `scores_<engine_name>.csv` in `<output_dir>/`.
 
 ---
 
 ## 5. OCR Wrapper: Turning OCR into a Classifier
 
-**Source**: `engines/ocr_wrapper.py` — `OCRModelWrapper`
+**Source**: `engines/ocr_wrapper.py` — `OCRModelWrapper` and `run_ocr_on_pil()`
 
 Adversarial attack libraries expect a model that takes an image tensor and returns class logits. OCR engines don't work that way — they take an image and return text. The `OCRModelWrapper` bridges this gap by turning OCR into a 2-class classification problem:
 
@@ -337,7 +312,7 @@ Class 1: "correct"  — OCR accuracy is at or above the threshold
 When the attack calls `model(image_tensor)`:
 
 1. The tensor (shape `(N, C, H, W)`, float `[0, 1]`) is converted to a PIL image.
-2. The PIL image is saved to disk, and the OCR engine is invoked via `ENGINE_FNS[engine_name]`.
+2. The PIL image is evaluated using the public `run_ocr_on_pil(pil_img, engine_name, work_dir)` function.
 3. The OCR output text is compared to the stored ground truth using `evaluate_text_pair()` to get an accuracy percentage.
 4. If accuracy ≥ threshold → return `[[0.0, 1.0]]` (predict class 1: correct)
 5. If accuracy < threshold → return `[[1.0, 0.0]]` (predict class 0: misread)
@@ -363,21 +338,9 @@ The supported OCR engines are loaded from `evaluation/engines/` using `importlib
 
 **Source**: `attacks/__init__.py` and `pipeline/dispatcher.py`
 
-Attacks are registered in `ATTACK_REGISTRY`, a dictionary mapping string names to lazy-loading functions. The lazy loading means attack dependencies are only imported when that attack is actually used:
+Attacks are registered in `ATTACK_REGISTRY`, a dictionary mapping string names to lazy-loading functions. The lazy loading means attack dependencies are only imported when that attack is actually used.
 
-```python
-ATTACK_REGISTRY = {
-    "smoo":         _lazy_smoo,        # → SMOO_AttackWrapper
-    "adba":         _lazy_adba,        # → ADBA_AttackWrapper
-    "surfree":      _lazy_surfree,     # → SurFree_AttackWrapper
-    "rays":         _lazy_rays,        # → RaySAttack
-    "l0_pgd":       _lazy_l0_pgd,      # → L0_PGD_AttackWrapper
-    "l0_sigma_pgd": _lazy_l0_sigma_pgd,# → L0_Sigma_PGD_AttackWrapper
-    "l0_linf_pgd":  _lazy_l0_linf_pgd, # → L0_Linf_PGD_AttackWrapper
-}
-```
-
-Each attack has a different calling convention. The `dispatch_attack()` function translates the pipeline's uniform `(attack_name, eps, config_overrides)` interface into the specific arguments each attack expects:
+Each attack has a different calling convention. The `dispatch_attack()` function translates the pipeline's uniform `(attack_name, eps, config_overrides)` interface into the specific arguments each wrapper expects:
 
 | Attack | Epsilon meaning | Key config fields |
 |:---|:---|:---|
@@ -385,17 +348,14 @@ Each attack has a different calling convention. The `dispatch_attack()` function
 | `adba` | L∞ perturbation budget (passed as `epsilon`) | `budget`, `init_dir`, `offspring_n`, `binary_mode` |
 | `rays` | L∞ perturbation budget (passed directly) | `query_limit` |
 | `surfree` | L2 distance threshold (passed as `l2_threshold`) | `init.steps`, `init.max_queries` |
-| `l0_pgd` variants | Sparsity (converted to int if ≥ 1, else `int(eps × 1024)`) | `n_restarts`, `num_steps`, `step_size`, `random_start` |
-
-SurFree returns a tuple `(advLoader, adv_blobs)` — the dispatcher extracts just the loader.
 
 ---
 
 ## 7. Concurrency Model
 
-**Source**: `pipeline/runner.py` — `_run_dataset()` and `_run_attack_config()`
+**Source**: `run_ocr.py` — `run_ocr_attacks()`
 
-The pipeline uses two levels of thread pools and one semaphore:
+The concurrency model runs attacks concurrently for different `(attack_name, epsilon)` configs for the single specified engine.
 
 ```mermaid
 flowchart TB
@@ -405,34 +365,21 @@ flowchart TB
         T3["Task: rays @ eps=0.0627"]
     end
 
-    subgraph Inner["Inner ThreadPoolExecutor (per image)<br/>max_workers = num_engines"]
-        E1["easyocr"]
-        E2["tesseract"]
-        E3["gotocr"]
-    end
-
-    T1 --> Inner
-    
     subgraph GPU["GPU Semaphore (value=4)"]
         S["Limits concurrent<br/>attack generation"]
     end
 
-    E1 -.->|acquire before attack| GPU
-    E2 -.->|acquire before attack| GPU
-    E3 -.->|acquire before attack| GPU
+    T1 -.->|acquire before attack| GPU
+    T2 -.->|acquire before attack| GPU
+    T3 -.->|acquire before attack| GPU
 
     style Outer fill:#d6eaf8,stroke:#2980b9,stroke-width:2px
-    style Inner fill:#fdebd0,stroke:#e67e22,stroke-width:2px
     style GPU fill:#fadbd8,stroke:#e74c3c,stroke-width:2px
 ```
 
-**Outer pool**: One thread per `(attack_name, epsilon)` combination. For example, with 4 attacks and 3 epsilon values each, there are 12 tasks. The pool is sized to `min(16, num_tasks)`.
-
-**Inner pool**: For each image within an attack config, one thread per OCR engine. This runs different engines on the same image concurrently.
+**Outer pool**: One thread per `(attack_name, epsilon)` combination. The pool is sized to `min(16, num_tasks)`.
 
 **GPU semaphore**: A `threading.Semaphore` with a default value of 4. Each thread must acquire the semaphore before running `dispatch_attack()` and releases it afterward. This prevents more than 4 GPU-heavy operations from running simultaneously, avoiding CUDA out-of-memory errors.
-
-The semaphore only gates the attack generation step. OCR evaluation, stitching, and file I/O happen outside the semaphore.
 
 ---
 
@@ -445,14 +392,12 @@ The semaphore only gates the attack generation step. OCR evaluation, stitching, 
 `evaluate_text_pair(predicted, ground_truth)`:
 
 1. Both strings are normalized: all whitespace is removed, and text is lowercased.
-2. The Levenshtein edit distance between the normalized strings is computed. This counts the minimum number of single-character insertions, deletions, and substitutions needed to transform one string into the other.
+2. The Levenshtein edit distance between the normalized strings is computed.
 3. Accuracy is calculated as:
 
 ```
 accuracy = max(0, (1 - edit_distance / length_of_ground_truth)) × 100
 ```
-
-If the ground truth is empty: returns 100 if predicted is also empty, otherwise 0.
 
 ### Word-Level Accuracy (WER-based)
 
@@ -466,8 +411,6 @@ If the ground truth is empty: returns 100 if predicted is also empty, otherwise 
 accuracy = max(0, (1 - edit_distance / number_of_ground_truth_words)) × 100
 ```
 
-Both functions return a percentage in the range `[0, 100]`.
-
 ---
 
 ## 9. Configuration Reference
@@ -480,13 +423,13 @@ Both functions return a percentage in the range `[0, 100]`.
 | `attack_eps` | `dict` | See below | Epsilon values per attack |
 | `attack_configs` | `dict` | See below | Hyperparameters per attack |
 | `engines` | `list[str]` | `["easyocr", "tesseract", "gotocr", "trocr"]` | Which OCR engines to target |
-| `cer_threshold` | `float` | `50.0` | Accuracy boundary for the OCR wrapper's class decision |
+| `cer_threshold` | `float` | `50.0` | Accuracy boundary for the OCR wrapper's decision |
 | `dataset_root` | `Path` | `<repo>/dataset/` | Base path for dataset directories |
 | `datasets` | `list[dict]` | UCONN + 8and12 | Dataset entries with `name` and `manifest` path |
 | `output_dir` | `Path` | `adversarial/output/` | Where all output files are written |
 | `llm_model` | `str` | `"Qwen/Qwen3.6-35B-A3B:fastest"` | Hugging Face model for line selection |
-| `llm_max_retries` | `int` | `3` | Max API retries before falling back to all lines |
-| `render_font_path` | `str or None` | `None` | Override font path (None uses system defaults) |
+| `llm_max_retries` | `int` | `3` | Max API retries |
+| `render_font_path` | `str or None` | `None` | Override font path |
 | `render_font_size` | `int` | `12` | Font size in points |
 | `render_wrap_width` | `int` | `90` | Character column width for word wrapping |
 | `render_margin_x` | `int` | `15` | Left and right margin in pixels |
@@ -495,26 +438,6 @@ Both functions return a percentage in the range `[0, 100]`.
 | `render_line_padding` | `int` | `5` | Vertical gap between lines in pixels |
 | `render_bg_color` | `str` | `"white"` | Background color |
 | `render_text_color` | `str` | `"black"` | Text color |
-| `stitch_mode` | `str` | `"hard"` | Stitching method (hard-mask copy) |
-| `eval_mode` | `str` | `"both"` | Score both full composite and per-line crops |
-
-**Default epsilon values:**
-
-| Attack | Epsilon values |
-|:---|:---|
-| `adba` | `4/255`, `8/255`, `16/255` |
-| `rays` | `4/255`, `8/255`, `16/255` |
-| `surfree` | `2`, `3`, `5` |
-| `smoo` | `10`, `20` |
-
-**Default attack hyperparameters:**
-
-| Attack | Parameters |
-|:---|:---|
-| `smoo` | `iterations=500`, `pc=0.80`, `pm=0.20`, `pop_size=10`, `seed=42` |
-| `adba` | `budget=10000`, `init_dir=1`, `offspring_n=10`, `binary_mode=0` |
-| `rays` | `query_limit=10000` |
-| `surfree` | `init.steps=200`, `init.max_queries=10000` |
 
 ---
 
@@ -522,6 +445,8 @@ Both functions return a percentage in the range `[0, 100]`.
 
 ```
 adversarial/output/
+├── dataset_manifest.json              ← complete prepared dataset catalog
+│
 ├── <dataset_name>/
 │   ├── clean_renders/
 │   │   ├── <image_name>.png           ← rendered clean full-page image
@@ -548,9 +473,10 @@ adversarial/output/
 │                   └── <stem>_line_00.txt  ← OCR output on target line crop
 │
 ├── logs/
-│   └── adversarial_pipeline.log
+│   ├── dataset_creation.log
+│   └── run_ocr_<engine_name>.log
 │
-└── all_scores.csv
+└── scores_<engine_name>.csv            ← per-engine result scores
 ```
 
 **CSV columns** (from `PipelineReporter`):

@@ -17,27 +17,12 @@ def _lazy_rays():
     from .rays_attack import RaySAttack
     return RaySAttack
 
-def _lazy_l0_pgd():
-    from .l0_attack import L0_PGD_AttackWrapper
-    return L0_PGD_AttackWrapper
-
-def _lazy_l0_sigma_pgd():
-    from .l0_attack import L0_Sigma_PGD_AttackWrapper
-    return L0_Sigma_PGD_AttackWrapper
-
-def _lazy_l0_linf_pgd():
-    from .l0_attack import L0_Linf_PGD_AttackWrapper
-    return L0_Linf_PGD_AttackWrapper
-
 
 ATTACK_REGISTRY = {
     "smoo": _lazy_smoo,
     "adba": _lazy_adba,
     "surfree": _lazy_surfree,
     "rays": _lazy_rays,
-    "l0_pgd": _lazy_l0_pgd,
-    "l0_sigma_pgd": _lazy_l0_sigma_pgd,
-    "l0_linf_pgd": _lazy_l0_linf_pgd,
 }
 
 

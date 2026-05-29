@@ -27,22 +27,5 @@ def dispatch_attack(
         query_limit = config_overrides["query_limit"]
         return attack_fn(device, model, eps, query_limit, data_loader)
 
-    elif attack_name in ("l0_pgd", "l0_sigma_pgd", "l0_linf_pgd"):
-        sparsity = int(eps) if eps >= 1 else int(eps * 1024)
-        n_restarts = config_overrides["n_restarts"]
-        num_steps = config_overrides["num_steps"]
-        step_size = config_overrides["step_size"]
-        random_start = config_overrides["random_start"]
-        return attack_fn(
-            model,
-            device,
-            data_loader,
-            n_restarts,
-            num_steps,
-            step_size,
-            sparsity,
-            random_start,
-        )
-
     else:
         raise ValueError(f"No dispatch logic for attack '{attack_name}'")
