@@ -136,7 +136,8 @@
 		y: number,
 		charSpacing: number,
 		wordSpacing: number,
-		opacityJitter: number = 0
+		opacityJitter: number = 0,
+		random: () => number = Math.random
 	) {
 		const spaceW = ctx.measureText(" ").width;
 		const words = line.split(" ");
@@ -147,7 +148,7 @@
 			for (let i = 0; i < word.length; i++) {
 				const ch = word[i];
 
-				const alpha = 1 - Math.random() * opacityJitter;
+				const alpha = 1 - random() * opacityJitter;
 				ctx.fillStyle = `rgba(17,17,17,${alpha})`;
 
 				ctx.fillText(ch, x, y);
@@ -180,7 +181,8 @@
 		lineSpacing: number = 0,
 		wordSpacing: number = 0,
 		charSpacing: number = 0,
-		opacityJitter: number = 0
+		opacityJitter: number = 0,
+		random: () => number = Math.random
 	): TextLayout | undefined {
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
@@ -212,7 +214,7 @@
 		let y = padding;
 		for (const line of lines) {
 			lineYs.push(y);
-			drawLineWithSpacing(ctx, line, padding, y, charSpacing, wordSpacing, opacityJitter);
+			drawLineWithSpacing(ctx, line, padding, y, charSpacing, wordSpacing, opacityJitter, random);
 			y += lineHeight;
 		}
 

@@ -18,6 +18,7 @@
 	let stripeMode: 'global' | 'between-lines' = 'global';
 
 	let opacityJitter = 0;
+	let seed = 0;
 
 	function clearPerturbations() {
 		noise = 0;
@@ -52,6 +53,11 @@
 				<summary>Perturbation</summary>
 
 				<div class="panelContent">
+					<div class="row">
+						<label for="seed">Seed</label>
+						<input id="seed" type="number" bind:value={seed} />
+					</div>
+
 					<div class="row">
 						<label for="noise">Noise: {noise.toFixed(2)}</label>
 						<input id="noise" type="range" min="0" max="1" step="0.01" bind:value={noise} />
@@ -144,6 +150,7 @@
 		{stripeAngle}
 		{stripeMode}
 		{opacityJitter}
+		{seed}
 	/>
 </div>
 

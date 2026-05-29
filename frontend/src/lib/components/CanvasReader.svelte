@@ -2,6 +2,7 @@
 		import { onMount } from 'svelte';
 		import { drawText, measureTextHeight } from '$lib/canvas/drawText';
 		import { drawNoise } from '$lib/canvas/perturbations/noise';
+		import { createSeededRng, deriveSeed } from '$lib/canvas/seededRng';
 		import { drawStripes, drawBetweenLineStripes } from '$lib/canvas/perturbations/stripes';
 
 		export let text = '';
@@ -20,6 +21,7 @@
 		export let stripeMode: 'global' | 'between-lines' = 'global';
 
 		export let opacityJitter = 0;
+		export let seed = 0;
 
 		let lastHeight = -1;
 
@@ -32,6 +34,7 @@
 				lastHeight = neededH;
 			}
 
+			const opacityRandom = createSeededRng(deriveSeed(seed, 'opacityJitter'));
 			const layout = drawText(
 				canvas,
 				text,
@@ -39,7 +42,8 @@
 				lineSpacing,
 				wordSpacing,
 				charSpacing,
-				opacityJitter
+				opacityJitter,
+				opacityRandom
 			);
 			if (!layout) return;
 
@@ -50,7 +54,8 @@
 			const color = perturbationColor;
 
 			if (noise > 0) {
-				drawNoise(ctx, rect.width, rect.height, noise, color);
+				const noiseRandom = createSeededRng(deriveSeed(seed, 'noise'));
+				drawNoise(ctx, rect.width, rect.height, noise, color, noiseRandom);
 			}
 
 			if (stripes > 0) {
@@ -88,7 +93,8 @@
 				`_ws=${wordSpacing}` +
 				`_noise=${noisePct}` +
 				`_stripes=${stripesPct}` +
-				`_oj=${opacityPct}.png`;
+				`_oj=${opacityPct}` +
+				`_seed=${seed}.png`;
 
 			a.download = filename;
 			a.click();
@@ -105,6 +111,7 @@
 		$: stripeAngle, redraw();
 		$: stripeMode, redraw();
 		$: opacityJitter, redraw();
+		$: seed, redraw();
 
 		onMount(() => {
 			redraw();
