@@ -19,6 +19,7 @@
 8. [Scoring Functions](#8-scoring-functions)
 9. [Configuration Reference](#9-configuration-reference)
 10. [Output Directory Layout](#10-output-directory-layout)
+11. [Execution Guide](#11-execution-guide)
 
 ---
 
@@ -491,3 +492,39 @@ adversarial/output/
 | `target_line` | `"all"` for full composite, or the line's text for target region |
 | `cer` | Character-level accuracy (0–100, rounded to 4 decimal places) |
 | `wer` | Word-level accuracy (0–100, rounded to 4 decimal places) |
+
+---
+
+### Environment Setup
+Make sure you have a `.env` file in the `adversarial/` directory containing your Hugging Face API token for LLM inference:
+```env
+HF_TOKEN=your_huggingface_token_here
+```
+
+### Step 1: Create the Dataset
+Generate the clean rendered images, crop targeted lines, and compile the unified `dataset_manifest.json` metadata catalog:
+```bash
+python adversarial/dataset_creation.py
+```
+
+### Step 2: Run Attacks for an OCR Engine
+To run all attack configurations for a specific engine, use:
+```bash
+python adversarial/run_ocr.py <engine_name>
+```
+Where `<engine_name>` is one of: `easyocr`, `tesseract`, `gotocr`, or `trocr`.
+
+Alternatively, use the dedicated engine-specific wrappers:
+```bash
+# Run attacks on EasyOCR
+python adversarial/run_easyocr.py
+
+# Run attacks on Tesseract
+python adversarial/run_tesseract.py
+
+# Run attacks on GOT-OCR
+python adversarial/run_gotocr.py
+
+# Run attacks on TrOCR
+python adversarial/run_trocr.py
+```
