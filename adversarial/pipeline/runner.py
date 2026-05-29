@@ -28,7 +28,12 @@ from utils.logger import ExperimentLogger
 from engines import OCRModelWrapper, ENGINE_FNS
 from attacks import get_attack
 from renderer import TextRenderer
-from region import match_semantic_to_visual, stitch_multi_region, stitch_adversarial, MatchedRegion
+from region import (
+    match_semantic_to_visual,
+    stitch_multi_region,
+    stitch_adversarial,
+    MatchedRegion,
+)
 from llm import LLMLineSelector
 from data import (
     load_manifest,
@@ -86,10 +91,11 @@ class AdversarialPipeline:
             ds_output_dir = self.config.output_dir / ds_name
 
             # -- Step 1: LLM Line Selection caching for all manifest items up-front --
-            self.logger.info("  Step 1: Running LLM line selection for all manifest items...")
+            self.logger.info(
+                "  Step 1: Running LLM line selection for all manifest items..."
+            )
             llm_selector = LLMLineSelector(
-                model=self.config.llm_model,
-                max_retries=self.config.llm_max_retries
+                model=self.config.llm_model, max_retries=self.config.llm_max_retries
             )
             manifest_selections = {}
             llm_cache_dir = ds_output_dir / "llm_selections"
@@ -104,17 +110,27 @@ class AdversarialPipeline:
                     try:
                         with cache_path.open("r", encoding="utf-8") as f:
                             selected_lines = json.load(f)
-                        self.logger.debug(f"    Loaded LLM selections for {img_name} from cache")
+                        self.logger.debug(
+                            f"    Loaded LLM selections for {img_name} from cache"
+                        )
                     except Exception as e:
-                        self.logger.warning(f"    Failed to load cache for {img_name}: {e}. Re-querying.")
-                        selected_lines = llm_selector.select_important_lines(item["ground_truth"])
+                        self.logger.warning(
+                            f"    Failed to load cache for {img_name}: {e}. Re-querying."
+                        )
+                        selected_lines = llm_selector.select_important_lines(
+                            item["ground_truth"]
+                        )
                         with cache_path.open("w", encoding="utf-8") as f:
                             json.dump(selected_lines, f, indent=2)
                 else:
-                    selected_lines = llm_selector.select_important_lines(item["ground_truth"])
+                    selected_lines = llm_selector.select_important_lines(
+                        item["ground_truth"]
+                    )
                     with cache_path.open("w", encoding="utf-8") as f:
                         json.dump(selected_lines, f, indent=2)
-                    self.logger.info(f"    Queried and cached LLM selections for {img_name}")
+                    self.logger.info(
+                        f"    Queried and cached LLM selections for {img_name}"
+                    )
 
                 manifest_selections[img_name] = selected_lines
 
@@ -163,10 +179,18 @@ class AdversarialPipeline:
                         crop_img = rendered.image.crop((x1, y1, x2, y2))
                         crop_img.save(crops_dir / f"line_{vl.line_index:02d}.png")
 
-            self.logger.info(f"  Rendered {len(manifest)} clean images and crop files to {clean_renders_dir}")
+            self.logger.info(
+                f"  Rendered {len(manifest)} clean images and crop files to {clean_renders_dir}"
+            )
 
             # Run attack configurations
-            self._run_dataset(manifest, rendered_images_map, manifest_selections, device, ds_output_dir)
+            self._run_dataset(
+                manifest,
+                rendered_images_map,
+                manifest_selections,
+                device,
+                ds_output_dir,
+            )
 
         # Flush CSV safely at the end — combined across all datasets
         self.reporter.write_csv(self.config.output_dir / "all_scores.csv")
@@ -174,7 +198,9 @@ class AdversarialPipeline:
         total = time.perf_counter() - pipeline_start
         self.logger.section(f"Pipeline complete — {total:.2f}s total")
 
-    def _run_dataset(self, manifest, rendered_images_map, manifest_selections, device, ds_output_dir):
+    def _run_dataset(
+        self, manifest, rendered_images_map, manifest_selections, device, ds_output_dir
+    ):
         """Run all attack configs against the rendered images."""
         tasks = []
         for attack_name in self.config.attacks:
@@ -274,7 +300,9 @@ class AdversarialPipeline:
                     for vl in rendered_img.lines
                 ]
 
-            clean_np = np.array(rendered_img.image.convert("RGB"), dtype=np.float32) / 255.0
+            clean_np = (
+                np.array(rendered_img.image.convert("RGB"), dtype=np.float32) / 255.0
+            )
             processed_line_indices = set()
             query_count = 0
 
@@ -316,11 +344,19 @@ class AdversarialPipeline:
                     processed_line_indices.add(vl.line_index)
 
                     # Load cropped line image from disk
-                    crop_path = ds_output_dir / "clean_renders" / "crops" / Path(image_name).stem / f"line_{vl.line_index:02d}.png"
+                    crop_path = (
+                        ds_output_dir
+                        / "clean_renders"
+                        / "crops"
+                        / Path(image_name).stem
+                        / f"line_{vl.line_index:02d}.png"
+                    )
                     line_crop = Image.open(crop_path).convert("RGB")
                     line_loader = pil_to_dataloader(line_crop, batch_size=1)
 
-                    ocr_model = OCRModelWrapper(engine_name, vl.text, self.config.cer_threshold)
+                    ocr_model = OCRModelWrapper(
+                        engine_name, vl.text, self.config.cer_threshold
+                    )
                     try:
                         with gpu_semaphore:
                             adv_loader = dispatch_attack(
@@ -334,20 +370,29 @@ class AdversarialPipeline:
                             )
 
                         perturbed_batch = next(iter(adv_loader))[0]
-                        perturbed_np = perturbed_batch[0].detach().cpu().permute(1, 2, 0).numpy()
+                        perturbed_np = (
+                            perturbed_batch[0].detach().cpu().permute(1, 2, 0).numpy()
+                        )
                         perturbed_np = np.clip(perturbed_np, 0.0, 1.0)
                         query_count += ocr_model.query_count
 
                         # Save debug line crop
                         crop_arr = (perturbed_np * 255).astype(np.uint8)
-                        line_crop_filename = f"{Path(image_name).stem}_line_{vl.line_index:02d}.png"
-                        Image.fromarray(crop_arr).save(line_crops_dir / line_crop_filename)
+                        line_crop_filename = (
+                            f"{Path(image_name).stem}_line_{vl.line_index:02d}.png"
+                        )
+                        Image.fromarray(crop_arr).save(
+                            line_crops_dir / line_crop_filename
+                        )
 
                         # Evaluate Target Region OCR vs Per-Line Ground Truth for this perturbed line directly
                         perturbed_pil = Image.fromarray(crop_arr)
                         line_ocr_text = _ocr_pil_image(perturbed_pil)
 
-                        with (results_target_dir / f"{Path(image_name).stem}_line_{vl.line_index:02d}.txt").open("w", encoding="utf-8") as f:
+                        with (
+                            results_target_dir
+                            / f"{Path(image_name).stem}_line_{vl.line_index:02d}.txt"
+                        ).open("w", encoding="utf-8") as f:
                             f.write(line_ocr_text)
 
                         line_cer = evaluate_text_pair(line_ocr_text, vl.text)
@@ -361,7 +406,12 @@ class AdversarialPipeline:
                             eval_scope="target_region",
                             target_line=vl.text,
                             cer=line_cer,
-                            wer=line_wer
+                            wer=line_wer,
+                        )
+
+                        self.logger.info(
+                            f"      [Line {vl.line_index}/{len(rendered_img.lines)}] {engine_name} ({attack_name} eps={eps}) "
+                            f"finished. Queries: {ocr_model.query_count}, CER: {line_cer:.2f}"
                         )
 
                         perturbed_crops.append(perturbed_np)
@@ -378,20 +428,28 @@ class AdversarialPipeline:
             if perturbed_crops:
                 try:
                     # Stitch all perturbed crops into clean background (Recreation phase)
-                    composite_np = stitch_multi_region(clean_np, perturbed_crops, perturbed_bboxes)
-                    
+                    composite_np = stitch_multi_region(
+                        clean_np, perturbed_crops, perturbed_bboxes
+                    )
+
                     # Save the single composite image
                     save_composite_image(composite_np, composite_dir, composite_name)
 
                     # Evaluate 1: Full Composite OCR vs Full Ground Truth
-                    composite_pil = Image.fromarray((composite_np * 255).astype(np.uint8))
+                    composite_pil = Image.fromarray(
+                        (composite_np * 255).astype(np.uint8)
+                    )
                     full_ocr_text = _ocr_pil_image(composite_pil)
 
-                    with (results_full_dir / f"{Path(image_name).stem}.txt").open("w", encoding="utf-8") as f:
-                         f.write(full_ocr_text)
+                    with (results_full_dir / f"{Path(image_name).stem}.txt").open(
+                        "w", encoding="utf-8"
+                    ) as f:
+                        f.write(full_ocr_text)
 
                     full_cer = evaluate_text_pair(full_ocr_text, rendered_img.full_text)
-                    full_wer = evaluate_text_pair_wer(full_ocr_text, rendered_img.full_text)
+                    full_wer = evaluate_text_pair_wer(
+                        full_ocr_text, rendered_img.full_text
+                    )
 
                     self.reporter.record_row(
                         image_name=composite_name,
@@ -401,7 +459,7 @@ class AdversarialPipeline:
                         eval_scope="full_composite",
                         target_line="all",
                         cer=full_cer,
-                        wer=full_wer
+                        wer=full_wer,
                     )
 
                 except Exception as e:

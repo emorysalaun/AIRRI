@@ -22,20 +22,43 @@ class PipelineReporter:
         cer: float,
         wer: float,
     ):
-        """Record a single score row for the CSV."""
-        img_name = image_name.replace(".txt", ".png") if image_name.endswith(".txt") else image_name
-        self.all_rows.append(
-            {
-                "image_name": img_name,
-                "engine": engine_name,
-                "eps": eps,
-                "attack": attack_name,
-                "eval_scope": eval_scope,
-                "target_line": target_line,
-                "cer": round(cer, 4),
-                "wer": round(wer, 4),
-            }
+        """Record a single score row for the CSV and write it immediately."""
+        img_name = (
+            image_name.replace(".txt", ".png")
+            if image_name.endswith(".txt")
+            else image_name
         )
+        row = {
+            "image_name": img_name,
+            "engine": engine_name,
+            "eps": eps,
+            "attack": attack_name,
+            "eval_scope": eval_scope,
+            "target_line": target_line,
+            "cer": round(cer, 4),
+            "wer": round(wer, 4),
+        }
+        self.all_rows.append(row)
+
+        # Immediate flush to disk to avoid "no results until finished"
+        csv_path = self.logger.log_dir.parent / "all_scores.csv"
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        fieldnames = [
+            "image_name",
+            "engine",
+            "eps",
+            "attack",
+            "eval_scope",
+            "target_line",
+            "cer",
+            "wer",
+        ]
+        file_exists = csv_path.exists()
+        with open(csv_path, "a", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            if not file_exists:
+                writer.writeheader()
+            writer.writerow(row)
 
     def record_scores(
         self, engine_name: str, eps: float, cer_scores: dict, wer_scores: dict
