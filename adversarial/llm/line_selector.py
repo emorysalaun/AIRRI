@@ -186,30 +186,29 @@ Assignment text:
         raise ValueError("LLM response did not contain a JSON array.")
 
     def _find_fuzzy_match(self, line: str, ground_truth: str) -> str | None:
-        """Find a substring in ground_truth that matches line, ignoring whitespace differences.
+        """Find a substring in ground_truth that matches line, ignoring whitespace/punctuation/case.
 
         Handles multi-line spans by first checking against the full normalized text,
         then falling back to per-line matching.
         """
-        normalized_line = "".join(line.split())
+        normalized_line = "".join(c.lower() for c in line if c.isalnum())
         if not normalized_line:
             return None
 
         # First: try matching against the full normalized text (handles multi-line spans)
-        normalized_full = "".join(ground_truth.split())
+        normalized_full = "".join(c.lower() for c in ground_truth if c.isalnum())
         pos = normalized_full.find(normalized_line)
         if pos != -1:
             # Map back to original text: find the original character range
-            # by walking through ground_truth and counting non-whitespace chars
             orig_start = None
             orig_end = None
-            non_ws_count = 0
+            alnum_count = 0
             for i, ch in enumerate(ground_truth):
-                if not ch.isspace():
-                    if non_ws_count == pos and orig_start is None:
+                if ch.isalnum():
+                    if alnum_count == pos and orig_start is None:
                         orig_start = i
-                    non_ws_count += 1
-                    if non_ws_count == pos + len(normalized_line):
+                    alnum_count += 1
+                    if alnum_count == pos + len(normalized_line):
                         orig_end = i + 1
                         break
             if orig_start is not None and orig_end is not None:
@@ -218,7 +217,8 @@ Assignment text:
         # Fallback: check individual lines
         lines = [l.strip() for l in ground_truth.splitlines() if l.strip()]
         for l in lines:
-            if normalized_line in "".join(l.split()):
+            norm_l = "".join(c.lower() for c in l if c.isalnum())
+            if normalized_line in norm_l:
                 return l
 
         return None
