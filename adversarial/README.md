@@ -144,15 +144,16 @@ For each manifest entry, the pipeline runs local LLM inference (default: `Qwen/Q
 
 **What the prompt tells the LLM to select:**
 
-- **For Academic Assignments:** What the student is being asked to do, deliverables required, and constraints that apply (format, length, citation style, etc.).
-- **For General Reading Passages:** The 1-3 most important sentences that convey the core facts, main idea, or central thesis.
+- **For Academic Assignments:** What the specific task/problem/topic is, deliverables required, constraints (format, length, citation style, etc.), and grading criteria.
+- **For General Reading Passages:** The sentences that encapsulate the primary thesis, critical facts, or main conclusions.
 
 **What the prompt tells the LLM to ignore:**
 
-- Course logistics, submission procedures, due dates
-- Instructor contact information
-- Generic academic integrity statements
-- Filler text
+- Administrative information, due dates, or course logistics
+- Submission procedures
+- Generic academic integrity statements or boilerplate policies
+- Instructor contact information or office hours
+- Filler text or introductory fluff
 
 The prompt explicitly states: _"The lines DO NOT need to be consecutive."_
 
@@ -434,7 +435,7 @@ accuracy = max(0, (1 - edit_distance / number_of_ground_truth_words)) × 100
 | `datasets`             | `list[dict]`  | UCONN + 8and12                                | Dataset entries with `name` and `manifest` path                                 |
 | `output_dir`           | `Path`        | `adversarial/output/`                         | Where all output files are written                                              |
 | `llm_model`            | `str`         | `"Qwen/Qwen3-32B"`                            | HuggingFace model ID for local LLM line selection (requires ~64GB VRAM in BF16) |
-| `llm_max_retries`      | `int`         | `3`                                           | Max inference retries                                                           |
+| `llm_cache_dir`        | `str or None` | `os.getenv("LLM_CACHE_DIR")`                  | Override HF cache directory for the LLM weights                                 |
 | `render_font_path`     | `str or None` | `None`                                        | Override font path                                                              |
 | `render_font_size`     | `int`         | `12`                                          | Font size in points                                                             |
 | `render_wrap_width`    | `int`         | `90`                                          | Character column width for word wrapping                                        |
@@ -505,16 +506,12 @@ adversarial/output/
 ### Prerequisites
 
 - **GPU**: NVIDIA A100 80GB (or equivalent with ≥64GB VRAM)
-- **Python environment**:
-  ```bash
-  module load conda/latest
-  conda activate airri
-  ```
 - **Dependencies**:
   ```bash
   pip install -r adversarial/requirements.txt
   ```
 - **Model download**: The first run of `dataset_creation.py` will automatically download the `Qwen/Qwen3-32B` model weights (~64GB) from HuggingFace Hub. Ensure you have sufficient disk space and network access. Subsequent runs use cached weights.
+  > **Note on Caching**: You can control where these massive model weights are downloaded by creating a `.env` file in the `adversarial/` directory and setting `LLM_CACHE_DIR="/path/to/your/cache"`. If the model is already downloaded elsewhere on your system, be sure to point this variable to the exact directory (e.g., `~/.cache/huggingface`) to avoid re-downloading the entire 64GB model.
 
 ### Step 1: Create the Dataset
 
