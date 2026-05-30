@@ -88,11 +88,11 @@ Selection Constraints:
 1. Choose only lines that are essential for completing the assignment.
 2. If removing a line would significantly reduce an LLM's ability to perform the task correctly, include it.
 3. Prefer task-defining instructions over administrative details.
-4. Extract exact verbatim text only.
+4. EXACT SUBSTRING MATCH REQUIRED: You must copy and paste the text exactly character-for-character from the Assignment text. Do NOT alter whitespace, capitalization, or punctuation.
 5. Do not paraphrase, summarize, or combine excerpts.
 6. Extracted text cannot exceed 50% of original text in length.
 
-Return ONLY a JSON array of strings, where each string is an exact excerpt from the original assignment text.
+Return ONLY a JSON array of strings, where each string is an EXACT, UNALTERED excerpt from the original assignment text. Any string that is not a literal substring of the assignment text will cause a system failure.
 
 Assignment text:
 {ground_truth}
@@ -139,9 +139,13 @@ Assignment text:
                     if line_stripped in ground_truth:
                         valid_lines.append(line_stripped)
                     else:
-                        logger.warning(
-                            f"LLM selected line not found in ground truth: {repr(line_stripped)}"
-                        )
+                        matched = self._find_fuzzy_match(line_stripped, ground_truth)
+                        if matched:
+                            valid_lines.append(matched)
+                        else:
+                            logger.warning(
+                                f"LLM selected line not found in ground truth: {repr(line_stripped)}"
+                            )
 
                 if not valid_lines:
                     raise ValueError("LLM response did not contain any valid lines that matched the text.")
@@ -181,7 +185,43 @@ Assignment text:
             return [str(item) for item in data]
         raise ValueError("LLM response did not contain a JSON array.")
 
+    def _find_fuzzy_match(self, line: str, ground_truth: str) -> str | None:
+        """Find a substring in ground_truth that matches line, ignoring whitespace differences.
 
+        Handles multi-line spans by first checking against the full normalized text,
+        then falling back to per-line matching.
+        """
+        normalized_line = "".join(line.split())
+        if not normalized_line:
+            return None
+
+        # First: try matching against the full normalized text (handles multi-line spans)
+        normalized_full = "".join(ground_truth.split())
+        pos = normalized_full.find(normalized_line)
+        if pos != -1:
+            # Map back to original text: find the original character range
+            # by walking through ground_truth and counting non-whitespace chars
+            orig_start = None
+            orig_end = None
+            non_ws_count = 0
+            for i, ch in enumerate(ground_truth):
+                if not ch.isspace():
+                    if non_ws_count == pos and orig_start is None:
+                        orig_start = i
+                    non_ws_count += 1
+                    if non_ws_count == pos + len(normalized_line):
+                        orig_end = i + 1
+                        break
+            if orig_start is not None and orig_end is not None:
+                return ground_truth[orig_start:orig_end].strip()
+
+        # Fallback: check individual lines
+        lines = [l.strip() for l in ground_truth.splitlines() if l.strip()]
+        for l in lines:
+            if normalized_line in "".join(l.split()):
+                return l
+
+        return None
 
     def cleanup(self):
         """Free GPU memory by deleting the model and tokenizer."""
