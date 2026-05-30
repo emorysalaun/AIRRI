@@ -111,7 +111,7 @@ def _run_attack_config(
                     line_loader = pil_to_dataloader(line_crop, batch_size=1)
 
                     ocr_model = OCRModelWrapper(
-                        engine_name, line_text, config.cer_threshold
+                        engine_name, line_text, config.acc_threshold
                     )
                     try:
                         with gpu_semaphore:
@@ -145,8 +145,8 @@ def _run_attack_config(
                         ).open("w", encoding="utf-8") as f:
                             f.write(line_ocr_text)
 
-                        line_cer = evaluate_text_pair(line_ocr_text, line_text)
-                        line_wer = evaluate_text_pair_wer(line_ocr_text, line_text)
+                        line_acc = evaluate_text_pair(line_ocr_text, line_text)
+                        line_word_acc = evaluate_text_pair_wer(line_ocr_text, line_text)
 
                         reporter.record_row(
                             image_name=composite_name,
@@ -155,12 +155,12 @@ def _run_attack_config(
                             attack_name=attack_name,
                             eval_scope="target_region",
                             target_line=line_text,
-                            cer=line_cer,
-                            wer=line_wer,
+                            char_acc=line_acc,
+                            word_acc=line_word_acc,
                         )
 
                         log.info(
-                            f"      [Line {line_index}] finished. Queries: {ocr_model.query_count}, CER: {line_cer:.2f}"
+                            f"      [Line {line_index}] finished. Queries: {ocr_model.query_count}, Accuracy: {line_acc:.2f}%"
                         )
 
                         perturbed_crops.append(perturbed_np)
@@ -186,8 +186,8 @@ def _run_attack_config(
                 ) as f:
                     f.write(full_ocr_text)
 
-                full_cer = evaluate_text_pair(full_ocr_text, item["full_text"])
-                full_wer = evaluate_text_pair_wer(
+                full_acc = evaluate_text_pair(full_ocr_text, item["full_text"])
+                full_word_acc = evaluate_text_pair_wer(
                     full_ocr_text, item["full_text"]
                 )
 
@@ -198,8 +198,8 @@ def _run_attack_config(
                     attack_name=attack_name,
                     eval_scope="full_composite",
                     target_line="all",
-                    cer=full_cer,
-                    wer=full_wer,
+                    char_acc=full_acc,
+                    word_acc=full_word_acc,
                 )
 
             elapsed_time += time.perf_counter() - start_time

@@ -289,14 +289,14 @@ After stitching, the pipeline evaluates the composite image at two levels:
 
 - OCR is run on the entire composite image using `run_ocr_on_pil()`.
 - The extracted text is compared against the full ground truth text.
-- CER and WER are computed and recorded with `eval_scope="full_composite"`.
+- Character and Word Accuracies are computed and recorded with `eval_scope="full_composite"`.
 
 **Level 2 — Per-line target evaluation:**
 
 - For each attacked line, the pipeline crops that line's bounding box from the composite image.
 - OCR is run on just that crop using `run_ocr_on_pil()`.
 - The extracted text is compared against that specific line's ground truth text.
-- CER and WER are computed and recorded with `eval_scope="target_region"`.
+- Character and Word Accuracies are computed and recorded with `eval_scope="target_region"`.
 
 All score rows are recorded immediately to the CSV file `scores_<engine_name>.csv` in `<output_dir>/`.
 
@@ -325,7 +325,7 @@ When the attack calls `model(image_tensor)`:
 
 The attack's job is to flip the prediction from class 1 to class 0. Each call to `model(image_tensor)` counts as one query.
 
-**Dynamic threshold adjustment**: On the first query (the clean image), if the OCR engine already reads the line poorly (accuracy below `cer_threshold`), the wrapper lowers its target. Specifically, it sets the threshold to the lesser of `(accuracy - 10)` and `(accuracy × 0.8)`, floored at 0. This prevents the attack from "succeeding" without actually doing anything.
+**Dynamic threshold adjustment**: On the first query (the clean image), if the OCR engine already reads the line poorly (accuracy below `acc_threshold`), the wrapper lowers its target. Specifically, it sets the threshold to the lesser of `(accuracy - 10)` and `(accuracy × 0.8)`, floored at 0. This prevents the attack from "succeeding" without actually doing anything.
 
 **Disk I/O optimization**: Because attacks may issue hundreds of queries per line, the wrapper creates its temp directory on `/dev/shm` (Linux RAM disk) if available. This avoids SSD write bottlenecks during query-heavy attacks.
 
@@ -385,7 +385,7 @@ flowchart TB
 
 **Outer pool**: One thread per `(attack_name, epsilon)` combination. The pool is sized to `min(16, num_tasks)`.
 
-**GPU semaphore**: A `threading.Semaphore` with a default value of 4. Each thread must acquire the semaphore before running `dispatch_attack()` and releases it afterward. This prevents more than 4 GPU-heavy operations from running simultaneously, avoiding CUDA out-of-memory errors.
+**GPU semaphore**: A `threading.Semaphore` with a default value of 4. Each thread must acquire the semaphore before running `dispatch_attack()` and releases it afterward. This prevents more than 4 GPU-heavy operations from running simultaneously.
 
 ---
 
@@ -429,7 +429,7 @@ accuracy = max(0, (1 - edit_distance / number_of_ground_truth_words)) × 100
 | `attack_eps`           | `dict`        | See below                                     | Epsilon values per attack                                                       |
 | `attack_configs`       | `dict`        | See below                                     | Hyperparameters per attack                                                      |
 | `engines`              | `list[str]`   | `["easyocr", "tesseract", "gotocr", "trocr"]` | Which OCR engines to target                                                     |
-| `cer_threshold`        | `float`       | `50.0`                                        | Accuracy boundary for the OCR wrapper's decision                                |
+| `acc_threshold`        | `float`       | `50.0`                                        | Accuracy boundary for the OCR wrapper's decision                                |
 | `dataset_root`         | `Path`        | `<repo>/dataset/`                             | Base path for dataset directories                                               |
 | `datasets`             | `list[dict]`  | UCONN + 8and12                                | Dataset entries with `name` and `manifest` path                                 |
 | `output_dir`           | `Path`        | `adversarial/output/`                         | Where all output files are written                                              |
@@ -495,8 +495,8 @@ adversarial/output/
 | `attack`      | Attack name                                                      |
 | `eval_scope`  | `"full_composite"` or `"target_region"`                          |
 | `target_line` | `"all"` for full composite, or the line's text for target region |
-| `cer`         | Character-level accuracy (0–100, rounded to 4 decimal places)    |
-| `wer`         | Word-level accuracy (0–100, rounded to 4 decimal places)         |
+| `char_acc`    | Character-level accuracy (0–100, rounded to 4 decimal places)    |
+| `word_acc`    | Word-level accuracy (0–100, rounded to 4 decimal places)         |
 
 ---
 
@@ -515,8 +515,6 @@ adversarial/output/
   pip install -r adversarial/requirements.txt
   ```
 - **Model download**: The first run of `dataset_creation.py` will automatically download the `Qwen/Qwen3-32B` model weights (~64GB) from HuggingFace Hub. Ensure you have sufficient disk space and network access. Subsequent runs use cached weights.
-
-> **Note:** No API tokens or `.env` files are needed. The LLM runs entirely locally.
 
 ### Step 1: Create the Dataset
 

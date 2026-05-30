@@ -19,8 +19,8 @@ class PipelineReporter:
             "attack",
             "eval_scope",
             "target_line",
-            "cer",
-            "wer",
+            "char_acc",
+            "word_acc",
         ]
         # Write header if file does not exist
         if not self.csv_path.exists():
@@ -37,8 +37,8 @@ class PipelineReporter:
         attack_name: str,
         eval_scope: str,
         target_line: str,
-        cer: float,
-        wer: float,
+        char_acc: float,
+        word_acc: float,
     ):
         """Record a single score row and write it immediately to disk."""
         img_name = (
@@ -53,8 +53,8 @@ class PipelineReporter:
             "attack": attack_name,
             "eval_scope": eval_scope,
             "target_line": target_line,
-            "cer": round(cer, 4),
-            "wer": round(wer, 4),
+            "char_acc": round(char_acc, 4),
+            "word_acc": round(word_acc, 4),
         }
         with self._lock:
             with open(self.csv_path, "a", newline="", encoding="utf-8") as f:

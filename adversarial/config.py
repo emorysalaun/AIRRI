@@ -14,9 +14,9 @@ class PipelineConfig:
     )
     attack_eps: dict = field(
         default_factory=lambda: {
-            "adba": [4 / 255, 8 / 255, 16 / 255],
-            "rays": [4 / 255, 8 / 255, 16 / 255],
-            "surfree": [2, 3, 5],
+            "adba": [8 / 255, 16 / 255, 32/255, 64/255],
+            "rays": [8 / 255, 16 / 255, 32/255, 64/255],
+            "surfree": [3, 5, 15],
             "smoo": [10, 20],
         }
     )
@@ -51,7 +51,7 @@ class PipelineConfig:
             },
         }
     )
-    cer_threshold: float = 50.0
+    acc_threshold: float = 50.0
     dataset_root: Path = Path(__file__).resolve().parent.parent / "dataset"
     datasets: list[dict] = field(
         default_factory=lambda: [

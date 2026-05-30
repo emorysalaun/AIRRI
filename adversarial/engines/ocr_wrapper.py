@@ -133,14 +133,14 @@ class OCRModelWrapper:
     Attacks set true_label=1 so they try to force misreads.
     """
 
-    def __init__(self, engine_name, ground_truth, cer_threshold=50.0):
+    def __init__(self, engine_name, ground_truth, acc_threshold=50.0):
         if engine_name not in ENGINE_FNS:
             raise ValueError(
                 f"Unknown engine '{engine_name}'. Available: {list(ENGINE_FNS)}"
             )
         self.engine_name = engine_name
         self.ground_truth = ground_truth
-        self.cer_threshold = cer_threshold
+        self.acc_threshold = acc_threshold
         self._query_count = 0
 
         # Use RAM Disk if available to bypass disk I/O bottleneck
@@ -164,8 +164,8 @@ class OCRModelWrapper:
 
             if self.target_threshold is None:
                 # First clean image evaluation: set dynamic threshold
-                if accuracy >= self.cer_threshold:
-                    self.target_threshold = self.cer_threshold
+                if accuracy >= self.acc_threshold:
+                    self.target_threshold = self.acc_threshold
                 else:
                     # If it already scores low naturally due to image/text size or engine capability,
                     # ask the attack to drop it by a relative margin to ensure perturbation.
