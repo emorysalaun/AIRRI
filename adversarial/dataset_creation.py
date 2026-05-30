@@ -3,7 +3,6 @@
 import json
 import sys
 from pathlib import Path
-from PIL import Image
 
 _ADV_DIR = str(Path(__file__).resolve().parent)
 if _ADV_DIR not in sys.path:
@@ -29,7 +28,8 @@ def create_dataset(config: PipelineConfig) -> Path:
     logger.section("AIRRI Dataset Creation Stage")
 
     llm_selector = LLMLineSelector(
-        model=config.llm_model, max_retries=config.llm_max_retries
+        model=config.llm_model, 
+        cache_dir=config.llm_cache_dir
     )
     renderer = TextRenderer(
         font_path=config.render_font_path,

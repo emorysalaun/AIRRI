@@ -51,15 +51,14 @@ class V:
         self.size_y = size_y
         self.device = device
         self.pixnum = size_x * size_y * size_channel
-        self.adv_v = [v for _ in range(self.pixnum)]
         self.score = 1.0
         self.Rmax = 1.0
         self.Rmin = 0.0
 
-        list_temp = [-1, 1]
         if v == 0:
-            for x in range(len(self.adv_v)):
-                self.adv_v[x] = random.choice(list_temp)
+            self.adv_v = random.choices([-1, 1], k=self.pixnum)
+        else:
+            self.adv_v = [v] * self.pixnum
     
     def reverse_v(self, block):
         """Reverse blocks of a perturbation direction to generate new directions."""
@@ -68,14 +67,9 @@ class V:
 
     def advv_to_tensor(self):
         """Convert perturbation direction to tensor."""
-        three_d_list = [
-            [[self.adv_v[channel * self.size_x * self.size_y + x * self.size_y + y]
-              for y in range(self.size_y)]
-             for x in range(self.size_x)]
-            for channel in range(self.size_channel)]
-        aim_np = np.array(three_d_list)
-        perturbation = torch.tensor(aim_np, dtype=torch.float32)
-        return perturbation.to(self.device)
+        perturbation = torch.tensor(self.adv_v, dtype=torch.float32, device=self.device)
+        perturbation = perturbation.view(self.size_channel, self.size_x, self.size_y)
+        return perturbation
 
 
 class Iter:
@@ -92,7 +86,7 @@ class Iter:
             self.offspringVs.append(copy.deepcopy(init_vbest))
             self.offspringVs[i].Rmax, self.offspringVs[i].Rmin = 1.0, 0.0
     
-    def mutation(self, model, original_image, label, aim_r, tolerance_binary_iters, blocks, binaryM):
+    def mutation(self, model, original_image, label, aim_r, blocks, binaryM):
         """Create a new generation."""
         query = 0
         for vi in range(self.offspringN):
@@ -100,7 +94,7 @@ class Iter:
             self.offspringVs[vi].Rmax, self.offspringVs[vi].Rmin = self.old_vbest.Rmax, 0.0
 
         query = query + self.compare_directions_usingADB(
-            model, original_image, label, aim_r, tolerance_binary_iters, binaryM)
+            model, original_image, label, aim_r, binaryM)
 
         for vi in range(self.offspringN):  # initialize directions
             self.offspringVs[vi].reverse_v(blocks[vi])
@@ -115,7 +109,7 @@ class Iter:
         self.iter_n = self.iter_n + 1
         return query
     
-    def compare_directions_usingADB(self, model, original_image, label, aim_r, maxIters, binaryM):
+    def compare_directions_usingADB(self, model, original_image, label, aim_r, binaryM):
         """Algorithm 2: Compare Directions Using ADB."""
         perturbations = []  # d1 d2
         perturbed_images = []  # = x+ADB*d
@@ -199,7 +193,7 @@ def progress_bar(imgi, query, iter, Rnow):
 # ==================== Algorithm 1: Main Attack Function ====================
 
 def ATK_ADBA(model, device, original_image_x, img_number, label_y, aim_r, 
-             tolerance_binary_iters, initDir, offspringN, binaryM, budget, channels=None):
+             initDir, offspringN, binaryM, budget, channels=None):
 
     model.eval()
     
@@ -213,34 +207,32 @@ def ATK_ADBA(model, device, original_image_x, img_number, label_y, aim_r,
     v0 = V(size_channel, size_x, size_y, initDir, device)
 
     iter_num = 1
-    block_iter = 0
     b0 = Block(0, pix_num - 1)
-    bs1 = b0.cut_block(offspringN)
-    blocks = [bs1]
+    current_blocks = b0.cut_block(offspringN)
 
     query = 0
     ITERATION = Iter(v0, offspringN, device, 1)
     
     # First mutation
     query = query + ITERATION.mutation(
-        model, original_image_x, label_y, aim_r, tolerance_binary_iters, blocks[0], binaryM)
+        model, original_image_x, label_y, aim_r, current_blocks, binaryM)
     progress_bar(img_number, query, iter_num, ITERATION.old_vbest.Rmax)
 
     # Main ATK loop
     while (query < budget) and (ITERATION.old_vbest.Rmax > aim_r):
-        block_iter = block_iter + 1
-        blocks_i = []
-        for i, bi in enumerate(blocks[block_iter - 1]):
-            blocks_i.extend(bi.cut_block(offspringN))
+        new_blocks = []
+        for i, bi in enumerate(current_blocks):
+            cut_bs = bi.cut_block(offspringN)
+            new_blocks.extend(cut_bs)
             query_plus = ITERATION.mutation(
-                model, original_image_x, label_y, aim_r, tolerance_binary_iters,
-                blocks_i[offspringN * i:offspringN * (i + 1)], binaryM)
+                model, original_image_x, label_y, aim_r,
+                cut_bs, binaryM)
             query = query + query_plus
             progress_bar(img_number, query, iter_num, ITERATION.old_vbest.Rmax)
             iter_num = iter_num + 1
             if (ITERATION.old_vbest.Rmax <= aim_r) or query >= budget:
                 break
-        blocks.append(copy.deepcopy(blocks_i))
+        current_blocks = new_blocks
 
     print()  # New line after progress bar
     
@@ -276,7 +268,6 @@ def ADBA_Attack(model, device, original_image, label, epsilon, budget, init_dir=
         img_number=0,  # Single image, use 0
         label_y=label,
         aim_r=epsilon,
-        tolerance_binary_iters=8,  # Default from original
         initDir=init_dir,
         offspringN=offspring_n,
         binaryM=binary_mode,

@@ -1,7 +1,6 @@
 import torch
 import random
 import numpy as np
-from .utils import atleast_kdim
 
 def get_init_with_noise(model, X, y, max_queries=1000):
     """

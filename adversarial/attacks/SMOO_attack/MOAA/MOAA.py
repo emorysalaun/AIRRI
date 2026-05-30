@@ -3,30 +3,7 @@ from .Solutions import *
 import numpy as np
 import time
 
-def p_selection(it, p_init, n_queries):
-    it = int(it / n_queries * 10000)
-    if 0 < it <= 50:
-        p = p_init / 2
-    elif 50 < it <= 200:
-        p = p_init / 4
-    elif 200 < it <= 500:
-        p = p_init / 5
-    elif 500 < it <= 1000:
-        p = p_init / 6
-    elif 1000 < it <= 2000:
-        p = p_init / 8
-    elif 2000 < it <= 4000:
-        p = p_init / 10
-    elif 4000 < it <= 6000:
-        p = p_init / 12
-    elif 6000 < it <= 8000:
-        p = p_init / 15
-    elif 8000 < it:
-        p = p_init / 20
-    else:
-        p = p_init
 
-    return p
 
 
 class Population:
@@ -80,7 +57,6 @@ class Attack:
         np.save(self.params["save_directory"], d, allow_pickle=True)
 
     def attack(self, loss_function):
-        start = time.time()
         # print(loss_function(self.params["x"]))
         # print(self.params["n_pixels"])
         # Minimizes
@@ -146,5 +122,4 @@ class Attack:
         population.fronts = fast_nondominated_sort(population.population)
         self.fitness.append(min(population.population, key=attrgetter('loss')).fitnesses)
         self.completion_procedure(population, loss_function, fe, False)
-        #print(time.time() - start)ff
         return

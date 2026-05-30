@@ -21,10 +21,12 @@ class LLMLineSelector:
         torch_dtype: torch.dtype = torch.bfloat16,
         max_retries: int = 3,
         retry_delay: float = 2.0,
+        cache_dir: str | None = None,
     ):
         self.model_name = model
         self.max_retries = max_retries
         self.retry_delay = retry_delay
+        self.cache_dir = cache_dir
 
         if device is None:
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -32,13 +34,17 @@ class LLMLineSelector:
             self.device = device
 
         logger.info(f"Loading tokenizer for {model}...")
-        self.tokenizer = AutoTokenizer.from_pretrained(model)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            model,
+            cache_dir=self.cache_dir
+        )
 
         logger.info(f"Loading model {model} (dtype={torch_dtype}) onto {self.device}...")
         self.model = AutoModelForCausalLM.from_pretrained(
             model,
             torch_dtype=torch_dtype,
             device_map=self.device,
+            cache_dir=self.cache_dir,
         )
         self.model.eval()
         logger.info(f"Model {model} loaded successfully.")
@@ -133,13 +139,9 @@ Assignment text:
                     if line_stripped in ground_truth:
                         valid_lines.append(line_stripped)
                     else:
-                        matched = self._find_fuzzy_match(line_stripped, ground_truth)
-                        if matched:
-                            valid_lines.append(matched)
-                        else:
-                            logger.warning(
-                                f"LLM selected line not found in ground truth: {repr(line_stripped)}"
-                            )
+                        logger.warning(
+                            f"LLM selected line not found in ground truth: {repr(line_stripped)}"
+                        )
 
                 if not valid_lines:
                     raise ValueError("LLM response did not contain any valid lines that matched the text.")
@@ -179,43 +181,7 @@ Assignment text:
             return [str(item) for item in data]
         raise ValueError("LLM response did not contain a JSON array.")
 
-    def _find_fuzzy_match(self, line: str, ground_truth: str) -> str | None:
-        """Find a substring in ground_truth that matches line, ignoring whitespace differences.
 
-        Handles multi-line spans by first checking against the full normalized text,
-        then falling back to per-line matching.
-        """
-        normalized_line = "".join(line.split())
-        if not normalized_line:
-            return None
-
-        # First: try matching against the full normalized text (handles multi-line spans)
-        normalized_full = "".join(ground_truth.split())
-        pos = normalized_full.find(normalized_line)
-        if pos != -1:
-            # Map back to original text: find the original character range
-            # by walking through ground_truth and counting non-whitespace chars
-            orig_start = None
-            orig_end = None
-            non_ws_count = 0
-            for i, ch in enumerate(ground_truth):
-                if not ch.isspace():
-                    if non_ws_count == pos and orig_start is None:
-                        orig_start = i
-                    non_ws_count += 1
-                    if non_ws_count == pos + len(normalized_line):
-                        orig_end = i + 1
-                        break
-            if orig_start is not None and orig_end is not None:
-                return ground_truth[orig_start:orig_end].strip()
-
-        # Fallback: check individual lines
-        lines = [l.strip() for l in ground_truth.splitlines() if l.strip()]
-        for l in lines:
-            if normalized_line in "".join(l.split()):
-                return l
-
-        return None
 
     def cleanup(self):
         """Free GPU memory by deleting the model and tokenizer."""

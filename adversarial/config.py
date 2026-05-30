@@ -1,5 +1,6 @@
 """Configuration settings for the adversarial pipeline."""
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -70,7 +71,7 @@ class PipelineConfig:
 
     # LLM-based line selection configuration
     llm_model: str = "Qwen/Qwen3-32B"
-    llm_max_retries: int = 3
+    llm_cache_dir: str | None = os.getenv("LLM_CACHE_DIR")
 
     # Rendering configuration
     render_font_path: str | None = None

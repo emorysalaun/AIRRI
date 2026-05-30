@@ -3,9 +3,7 @@
 # This attack has been modified to work the the ModelPlus and ShuffleDefense class
 import numpy as np
 import torch
-import utils
 import time
-import torch.nn.functional as F
 from utils.data_utils import dataloader_to_tensor, tensor_to_dataloader
 
 

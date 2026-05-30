@@ -48,7 +48,7 @@ def dct(x, norm=None):
     v = torch.cat([x[:, ::2], x[:, 1::2].flip([1])], dim=1)
     try:
         Vc = torch.fft.fft(v, dim=1)  # , onesided=False)
-    except RuntimeError as e:
+    except RuntimeError:
         print(f"FAILED ON FFT: {v.shape}")
         Vc = torch.fft.fft(v.cpu(), dim=1).to(v.device)
 
@@ -108,7 +108,7 @@ def idct(X, norm=None):
     V = torch.complex(V_r, V_i)
     try:
         v = torch.fft.ifft(V, dim=1)
-    except RuntimeError as e:
+    except RuntimeError:
         print(f"FAILED ON IFFT: {V.shape}")
         v = torch.fft.ifft(V.cpu(), dim=1).to(V.device)
 

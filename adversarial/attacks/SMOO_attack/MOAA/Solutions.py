@@ -1,6 +1,5 @@
 import numpy as np
 from copy import deepcopy
-from operator import attrgetter
 
 
 class Solution:

@@ -5,7 +5,6 @@ SMOO (Sparse Multi-Objective Optimization Attack) Wrapper
 """
 
 import numpy as np
-import torch
 import os
 
 from .MOAA.MOAA import Attack

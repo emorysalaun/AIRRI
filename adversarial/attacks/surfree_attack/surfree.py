@@ -69,7 +69,8 @@ class SurFree:
         self.final_line_search = final_line_search
         self.quantification = quantification
         if self.with_interpolation and not self.with_distance_line_search:
-            Warning(
+            import warnings
+            warnings.warn(
                 "It's higly recommended to use Interpolation with distance line search."
             )
 
