@@ -62,27 +62,20 @@ class LLMLineSelector:
         if not ground_truth:
             return []
 
-        prompt = f"""You are analyzing an academic assignment sheet.
+        prompt = f"""You are analyzing a document that may be an academic assignment or a general reading passage.
 
-Your goal is to identify the exact lines or sentences that contain the information an AI system would need in order to complete the assignment.
-The lines DO NOT need to be consecutive. They may come from completely different parts of the document.
+Your goal is to identify the exact lines or sentences that contain the most critical information.
 
-Think from the perspective of an LLM attempting to perform the assignment. Select the smallest set of verbatim excerpts that collectively answer questions such as:
+If the document is an assignment, select the smallest set of verbatim excerpts that collectively answer questions such as:
 - What is the student being asked to do?
-- What content, topic, problem, or question must be addressed?
 - What deliverables are required?
-- What constraints must the response satisfy (format, length, citation style, language, sources, structure, etc.)?
-- What evaluation criteria define success?
+- What constraints must the response satisfy?
 
-Prioritize instructions that directly determine how the assignment should be completed.
+If the document is a general reading passage or article, select the 1-3 most important sentences that convey the core facts, main idea, or central thesis.
 
-Do NOT prioritize:
-- Administrative information
-- Course logistics
-- Submission procedures
-- Due dates
-- Instructor contact information
-- Generic academic integrity statements
+The lines DO NOT need to be consecutive.
+
+Prioritize instructions or core facts. Do NOT prioritize administrative details, logistics, or filler text.
 
 Selection Constraints:
 1. Choose only lines that are essential for completing the assignment.

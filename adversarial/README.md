@@ -144,24 +144,22 @@ For each manifest entry, the pipeline runs local LLM inference (default: `Qwen/Q
 
 **What the prompt tells the LLM to select:**
 
-- What the student is being asked to do
-- What content, topic, problem, or question must be addressed
-- What deliverables are required
-- What constraints apply (format, length, citation style, etc.)
-- What evaluation criteria define success
+- **For Academic Assignments:** What the student is being asked to do, deliverables required, and constraints that apply (format, length, citation style, etc.).
+- **For General Reading Passages:** The 1-3 most important sentences that convey the core facts, main idea, or central thesis.
 
 **What the prompt tells the LLM to ignore:**
 
 - Course logistics, submission procedures, due dates
 - Instructor contact information
 - Generic academic integrity statements
+- Filler text
 
-The prompt explicitly states: _"The lines DO NOT need to be consecutive. They may come from completely different parts of the document."_
+The prompt explicitly states: _"The lines DO NOT need to be consecutive."_
 
 The LLM returns a JSON array of verbatim string excerpts (with Qwen3 thinking mode disabled for clean output). Each returned excerpt is validated:
 
 1. **Exact match**: Check if the excerpt appears as a substring of the ground truth.
-2. **Fuzzy match**: If exact match fails, normalize both strings by removing all whitespace, then try substring matching against the full text (handles multi-line spans). If a match is found, the original (non-normalized) text from the ground truth is used.
+2. **Fuzzy match**: If exact match fails, normalize both strings by removing all non-alphanumeric characters and converting to lowercase, then try substring matching against the full text (handles multi-line spans, capitalization errors, and punctuation hallucinations). If a match is found, the original (non-normalized) text from the ground truth is used.
 3. **No Fallback**: If inference fails after `max_retries` attempts, or if the response contains no valid excerpts, an exception is raised and the process aborts.
 
 **Caching**: Selections are saved to disk as JSON files in `<output_dir>/<dataset>/llm_selections/<image_stem>.json`. On subsequent runs, cached results are loaded instead of re-running inference.
