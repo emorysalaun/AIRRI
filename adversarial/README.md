@@ -94,22 +94,22 @@ flowchart LR
     wrapper --> score
 ```
 
-| Module | File | Purpose |
-|:---|:---|:---|
-| Dataset Entry point | `dataset_creation.py` | Creates `PipelineConfig`, runs LLM selection, renders images, crops visual lines, saves `dataset_manifest.json` |
-| Attack Entry point | `run_ocr.py` | Load prepared `dataset_manifest.json` and runs all registered attack/epsilon configs for a single specified OCR engine |
-| Engine Wrappers | `run_*.py` | Thin wrapper scripts (`run_tesseract.py`, `run_easyocr.py`, `run_gotocr.py`, `run_trocr.py`) that call `run_ocr.py` with hardcoded engine names |
-| Config | `config.py` | Dataclass holding all pipeline settings (attacks, engines, epsilons, rendering parameters) |
-| Dispatcher | `pipeline/dispatcher.py` | Maps each attack name to its specific function signature |
-| Reporter | `pipeline/reporter.py` | Appends per-image score rows immediately to a CSV file (`scores_<engine_name>.csv`) |
-| LLM Selector | `llm/line_selector.py` | Calls the Hugging Face Inference API to select important text excerpts |
-| Renderer | `renderer/text_renderer.py` | Draws text onto images using PIL, records bounding boxes for each visual line |
-| Matcher | `region/matcher.py` | Maps LLM-selected text excerpts to visual line bounding boxes |
-| Stitcher | `region/stitcher.py` | Pastes perturbed crops back into the clean image at their bounding boxes |
-| OCR Wrapper | `engines/ocr_wrapper.py` | Wraps OCR engines as 2-class classifiers for use with attack libraries, exports public `run_ocr_on_pil` |
-| Data Handler | `data/handler.py` | Loads manifests, converts images to DataLoaders, saves output images, reads/writes dataset manifests |
-| Scoring | `evaluation/score.py` | Computes character-level and word-level accuracy using Levenshtein distance |
-| Attack Registry | `attacks/__init__.py` | Registry for lazy-loading attack wrapper classes by name |
+| Module              | File                        | Purpose                                                                                                                                         |
+| :------------------ | :-------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dataset Entry point | `dataset_creation.py`       | Creates `PipelineConfig`, runs LLM selection, renders images, crops visual lines, saves `dataset_manifest.json`                                 |
+| Attack Entry point  | `run_ocr.py`                | Load prepared `dataset_manifest.json` and runs all registered attack/epsilon configs for a single specified OCR engine                          |
+| Engine Wrappers     | `run_*.py`                  | Thin wrapper scripts (`run_tesseract.py`, `run_easyocr.py`, `run_gotocr.py`, `run_trocr.py`) that call `run_ocr.py` with hardcoded engine names |
+| Config              | `config.py`                 | Dataclass holding all pipeline settings (attacks, engines, epsilons, rendering parameters)                                                      |
+| Dispatcher          | `pipeline/dispatcher.py`    | Maps each attack name to its specific function signature                                                                                        |
+| Reporter            | `pipeline/reporter.py`      | Appends per-image score rows immediately to a thread-safe CSV file (`scores_<engine_name>.csv`)                                                 |
+| LLM Selector        | `llm/line_selector.py`      | Runs local HuggingFace transformers inference to select important text excerpts                                                                 |
+| Renderer            | `renderer/text_renderer.py` | Draws text onto images using PIL, records bounding boxes for each visual line                                                                   |
+| Matcher             | `region/matcher.py`         | Maps LLM-selected text excerpts to visual line bounding boxes                                                                                   |
+| Stitcher            | `region/stitcher.py`        | Pastes perturbed crops back into the clean image at their bounding boxes                                                                        |
+| OCR Wrapper         | `engines/ocr_wrapper.py`    | Wraps OCR engines as 2-class classifiers for use with attack libraries, exports public `run_ocr_on_pil`                                         |
+| Data Handler        | `data/handler.py`           | Loads manifests, converts images to DataLoaders, saves output images, reads/writes dataset manifests                                            |
+| Scoring             | `evaluation/score.py`       | Computes character-level and word-level accuracy using Levenshtein distance                                                                     |
+| Attack Registry     | `attacks/__init__.py`       | Registry for lazy-loading attack wrapper classes by name                                                                                        |
 
 ---
 
@@ -138,9 +138,12 @@ The function `filter_clean_manifest()` keeps only entries where `image_name` con
 
 **Source**: `llm/line_selector.py` — `LLMLineSelector.select_important_lines()`
 
-For each manifest entry, the pipeline sends the `ground_truth` text to a language model (default: `Qwen/Qwen3.6-35B-A3B:fastest` via the Hugging Face Inference API) and asks it to return the verbatim lines that an LLM would need in order to complete the assignment.
+For each manifest entry, the pipeline runs local LLM inference (default: `Qwen/Qwen3-32B` via HuggingFace `transformers`) to identify the verbatim lines that an LLM would need in order to complete the assignment. The model is loaded once into GPU memory (requires an A100 80GB or equivalent) and reused for all documents.
+
+> **Note:** The first run will download the model weights (~64GB for BF16). Subsequent runs use the cached weights from the HuggingFace cache directory.
 
 **What the prompt tells the LLM to select:**
+
 - What the student is being asked to do
 - What content, topic, problem, or question must be addressed
 - What deliverables are required
@@ -148,19 +151,20 @@ For each manifest entry, the pipeline sends the `ground_truth` text to a languag
 - What evaluation criteria define success
 
 **What the prompt tells the LLM to ignore:**
+
 - Course logistics, submission procedures, due dates
 - Instructor contact information
 - Generic academic integrity statements
 
-The prompt explicitly states: *"The lines DO NOT need to be consecutive. They may come from completely different parts of the document."*
+The prompt explicitly states: _"The lines DO NOT need to be consecutive. They may come from completely different parts of the document."_
 
-The LLM returns a JSON array of verbatim string excerpts. Each returned excerpt is validated:
+The LLM returns a JSON array of verbatim string excerpts (with Qwen3 thinking mode disabled for clean output). Each returned excerpt is validated:
 
 1. **Exact match**: Check if the excerpt appears as a substring of the ground truth.
-2. **Fuzzy match**: If exact match fails, normalize both strings by removing all whitespace, then try substring matching. If a match is found, the original (non-normalized) text from the ground truth is used.
-3. **No Fallback**: If the API call fails after `max_retries` attempts, or if the response contains no valid excerpts, an exception is raised and the process aborts.
+2. **Fuzzy match**: If exact match fails, normalize both strings by removing all whitespace, then try substring matching against the full text (handles multi-line spans). If a match is found, the original (non-normalized) text from the ground truth is used.
+3. **No Fallback**: If inference fails after `max_retries` attempts, or if the response contains no valid excerpts, an exception is raised and the process aborts.
 
-**Caching**: Selections are saved to disk as JSON files in `<output_dir>/<dataset>/llm_selections/<image_stem>.json`. On subsequent runs, cached results are loaded instead of re-querying the API.
+**Caching**: Selections are saved to disk as JSON files in `<output_dir>/<dataset>/llm_selections/<image_stem>.json`. On subsequent runs, cached results are loaded instead of re-running inference.
 
 ---
 
@@ -182,6 +186,7 @@ The pipeline renders the ground truth text into clean images from scratch. This 
 6. After drawing, `textbbox()` is called again at the actual draw position to get a tight bounding box.
 
 The result is a `RenderedImage` object containing:
+
 - The PIL image
 - A list of `RenderedLine` objects, each with: the line text, its bounding box `(x1, y1, x2, y2)`, and its index (0-based)
 - The full original text
@@ -283,11 +288,13 @@ The final composite is saved as a PNG to `<attack>/<eps>/<engine>/composite_imag
 After stitching, the pipeline evaluates the composite image at two levels:
 
 **Level 1 — Full composite evaluation:**
+
 - OCR is run on the entire composite image using `run_ocr_on_pil()`.
 - The extracted text is compared against the full ground truth text.
 - CER and WER are computed and recorded with `eval_scope="full_composite"`.
 
 **Level 2 — Per-line target evaluation:**
+
 - For each attacked line, the pipeline crops that line's bounding box from the composite image.
 - OCR is run on just that crop using `run_ocr_on_pil()`.
 - The extracted text is compared against that specific line's ground truth text.
@@ -326,12 +333,12 @@ The attack's job is to flip the prediction from class 1 to class 0. Each call to
 
 The supported OCR engines are loaded from `evaluation/engines/` using `importlib`:
 
-| Engine key | Function | Source file |
-|:---|:---|:---|
-| `easyocr` | `run_easyocr_folder` | `evaluation/engines/easyocr_engine.py` |
+| Engine key  | Function               | Source file                              |
+| :---------- | :--------------------- | :--------------------------------------- |
+| `easyocr`   | `run_easyocr_folder`   | `evaluation/engines/easyocr_engine.py`   |
 | `tesseract` | `run_tesseract_folder` | `evaluation/engines/tesseract_engine.py` |
-| `gotocr` | `run_gotocr_folder` | `evaluation/engines/gotocr_engine.py` |
-| `trocr` | `run_trocr_folder` | `evaluation/engines/trocr_engine.py` |
+| `gotocr`    | `run_gotocr_folder`    | `evaluation/engines/gotocr_engine.py`    |
+| `trocr`     | `run_trocr_folder`     | `evaluation/engines/trocr_engine.py`     |
 
 ---
 
@@ -343,12 +350,12 @@ Attacks are registered in `ATTACK_REGISTRY`, a dictionary mapping string names t
 
 Each attack has a different calling convention. The `dispatch_attack()` function translates the pipeline's uniform `(attack_name, eps, config_overrides)` interface into the specific arguments each wrapper expects:
 
-| Attack | Epsilon meaning | Key config fields |
-|:---|:---|:---|
-| `smoo` | Pixel-level perturbation limit (converted to int if ≥ 1, else `int(eps × 1024)`) | `iterations`, `pc`, `pm`, `pop_size`, `seed` |
-| `adba` | L∞ perturbation budget (passed as `epsilon`) | `budget`, `init_dir`, `offspring_n`, `binary_mode` |
-| `rays` | L∞ perturbation budget (passed directly) | `query_limit` |
-| `surfree` | L2 distance threshold (passed as `l2_threshold`) | `init.steps`, `init.max_queries` |
+| Attack    | Epsilon meaning                                                                  | Key config fields                                  |
+| :-------- | :------------------------------------------------------------------------------- | :------------------------------------------------- |
+| `smoo`    | Pixel-level perturbation limit (converted to int if ≥ 1, else `int(eps × 1024)`) | `iterations`, `pc`, `pm`, `pop_size`, `seed`       |
+| `adba`    | L∞ perturbation budget (passed as `epsilon`)                                     | `budget`, `init_dir`, `offspring_n`, `binary_mode` |
+| `rays`    | L∞ perturbation budget (passed directly)                                         | `query_limit`                                      |
+| `surfree` | L2 distance threshold (passed as `l2_threshold`)                                 | `init.steps`, `init.max_queries`                   |
 
 ---
 
@@ -418,27 +425,27 @@ accuracy = max(0, (1 - edit_distance / number_of_ground_truth_words)) × 100
 
 **Source**: `config.py` — `PipelineConfig`
 
-| Field | Type | Default | Description |
-|:---|:---|:---|:---|
-| `attacks` | `list[str]` | `["smoo", "adba", "rays", "surfree"]` | Which attacks to run |
-| `attack_eps` | `dict` | See below | Epsilon values per attack |
-| `attack_configs` | `dict` | See below | Hyperparameters per attack |
-| `engines` | `list[str]` | `["easyocr", "tesseract", "gotocr", "trocr"]` | Which OCR engines to target |
-| `cer_threshold` | `float` | `50.0` | Accuracy boundary for the OCR wrapper's decision |
-| `dataset_root` | `Path` | `<repo>/dataset/` | Base path for dataset directories |
-| `datasets` | `list[dict]` | UCONN + 8and12 | Dataset entries with `name` and `manifest` path |
-| `output_dir` | `Path` | `adversarial/output/` | Where all output files are written |
-| `llm_model` | `str` | `"Qwen/Qwen3.6-35B-A3B:fastest"` | Hugging Face model for line selection |
-| `llm_max_retries` | `int` | `3` | Max API retries |
-| `render_font_path` | `str or None` | `None` | Override font path |
-| `render_font_size` | `int` | `12` | Font size in points |
-| `render_wrap_width` | `int` | `90` | Character column width for word wrapping |
-| `render_margin_x` | `int` | `15` | Left and right margin in pixels |
-| `render_margin_top` | `int` | `16` | Top margin in pixels |
-| `render_margin_bottom` | `int` | `17` | Bottom margin in pixels |
-| `render_line_padding` | `int` | `5` | Vertical gap between lines in pixels |
-| `render_bg_color` | `str` | `"white"` | Background color |
-| `render_text_color` | `str` | `"black"` | Text color |
+| Field                  | Type          | Default                                       | Description                                                                     |
+| :--------------------- | :------------ | :-------------------------------------------- | :------------------------------------------------------------------------------ |
+| `attacks`              | `list[str]`   | `["smoo", "adba", "rays", "surfree"]`         | Which attacks to run                                                            |
+| `attack_eps`           | `dict`        | See below                                     | Epsilon values per attack                                                       |
+| `attack_configs`       | `dict`        | See below                                     | Hyperparameters per attack                                                      |
+| `engines`              | `list[str]`   | `["easyocr", "tesseract", "gotocr", "trocr"]` | Which OCR engines to target                                                     |
+| `cer_threshold`        | `float`       | `50.0`                                        | Accuracy boundary for the OCR wrapper's decision                                |
+| `dataset_root`         | `Path`        | `<repo>/dataset/`                             | Base path for dataset directories                                               |
+| `datasets`             | `list[dict]`  | UCONN + 8and12                                | Dataset entries with `name` and `manifest` path                                 |
+| `output_dir`           | `Path`        | `adversarial/output/`                         | Where all output files are written                                              |
+| `llm_model`            | `str`         | `"Qwen/Qwen3-32B"`                            | HuggingFace model ID for local LLM line selection (requires ~64GB VRAM in BF16) |
+| `llm_max_retries`      | `int`         | `3`                                           | Max inference retries                                                           |
+| `render_font_path`     | `str or None` | `None`                                        | Override font path                                                              |
+| `render_font_size`     | `int`         | `12`                                          | Font size in points                                                             |
+| `render_wrap_width`    | `int`         | `90`                                          | Character column width for word wrapping                                        |
+| `render_margin_x`      | `int`         | `15`                                          | Left and right margin in pixels                                                 |
+| `render_margin_top`    | `int`         | `16`                                          | Top margin in pixels                                                            |
+| `render_margin_bottom` | `int`         | `17`                                          | Bottom margin in pixels                                                         |
+| `render_line_padding`  | `int`         | `5`                                           | Vertical gap between lines in pixels                                            |
+| `render_bg_color`      | `str`         | `"white"`                                     | Background color                                                                |
+| `render_text_color`    | `str`         | `"black"`                                     | Text color                                                                      |
 
 ---
 
@@ -482,39 +489,57 @@ adversarial/output/
 
 **CSV columns** (from `PipelineReporter`):
 
-| Column | Description |
-|:---|:---|
-| `image_name` | Source image filename |
-| `engine` | OCR engine used |
-| `eps` | Perturbation budget |
-| `attack` | Attack name |
-| `eval_scope` | `"full_composite"` or `"target_region"` |
+| Column        | Description                                                      |
+| :------------ | :--------------------------------------------------------------- |
+| `image_name`  | Source image filename                                            |
+| `engine`      | OCR engine used                                                  |
+| `eps`         | Perturbation budget                                              |
+| `attack`      | Attack name                                                      |
+| `eval_scope`  | `"full_composite"` or `"target_region"`                          |
 | `target_line` | `"all"` for full composite, or the line's text for target region |
-| `cer` | Character-level accuracy (0–100, rounded to 4 decimal places) |
-| `wer` | Word-level accuracy (0–100, rounded to 4 decimal places) |
+| `cer`         | Character-level accuracy (0–100, rounded to 4 decimal places)    |
+| `wer`         | Word-level accuracy (0–100, rounded to 4 decimal places)         |
 
 ---
 
-### Environment Setup
-Make sure you have a `.env` file in the `adversarial/` directory containing your Hugging Face API token for LLM inference:
-```env
-HF_TOKEN=your_huggingface_token_here
-```
+## 11. Execution Guide
+
+### Prerequisites
+
+- **GPU**: NVIDIA A100 80GB (or equivalent with ≥64GB VRAM)
+- **Python environment**:
+  ```bash
+  module load conda/latest
+  conda activate airri
+  ```
+- **Dependencies**:
+  ```bash
+  pip install -r adversarial/requirements.txt
+  ```
+- **Model download**: The first run of `dataset_creation.py` will automatically download the `Qwen/Qwen3-32B` model weights (~64GB) from HuggingFace Hub. Ensure you have sufficient disk space and network access. Subsequent runs use cached weights.
+
+> **Note:** No API tokens or `.env` files are needed. The LLM runs entirely locally.
 
 ### Step 1: Create the Dataset
+
 Generate the clean rendered images, crop targeted lines, and compile the unified `dataset_manifest.json` metadata catalog:
+
 ```bash
 python adversarial/dataset_creation.py
 ```
 
 ### Step 2: Run Attacks for an OCR Engine
+
 To run all attack configurations for a specific engine, use:
+
 ```bash
 python adversarial/run_ocr.py <engine_name>
 ```
+
 Where `<engine_name>` is one of: `easyocr`, `tesseract`, `gotocr`, or `trocr`.
 
 Alternatively, use the dedicated engine-specific wrappers:
+
 ```bash
 # Run attacks on EasyOCR
 python adversarial/run_easyocr.py
@@ -528,3 +553,5 @@ python adversarial/run_gotocr.py
 # Run attacks on TrOCR
 python adversarial/run_trocr.py
 ```
+
+**Requirements:** NVIDIA A100 80GB GPU (or equivalent with ≥64GB VRAM) for local LLM inference.

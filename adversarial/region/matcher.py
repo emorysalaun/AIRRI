@@ -58,13 +58,21 @@ def match_semantic_to_visual(
 
         sem_start = full_text.find(sem_line_stripped)
         if sem_start == -1:
-            # Try normalized search if exact match fails
+            # Try normalized search if exact match fails:
+            # Normalize full text once, find once, then map back to original index.
             normalized_sem = "".join(sem_line_stripped.split())
-            for i in range(len(full_text)):
-                candidate = "".join(full_text[i : i + len(sem_line_stripped) * 2].split())
-                if candidate.startswith(normalized_sem):
-                    sem_start = i
-                    break
+            normalized_full = "".join(full_text.split())
+            norm_pos = normalized_full.find(normalized_sem)
+
+            if norm_pos != -1:
+                # Map normalized position back to original string index
+                non_ws_count = 0
+                for i, ch in enumerate(full_text):
+                    if not ch.isspace():
+                        if non_ws_count == norm_pos:
+                            sem_start = i
+                            break
+                        non_ws_count += 1
 
             if sem_start == -1:
                 logger.warning(

@@ -2,5 +2,6 @@ torch
 numpy
 Pillow
 huggingface_hub
-python-dotenv
+transformers
+accelerate
 scipy

@@ -20,6 +20,9 @@ class ExperimentLogger:
         self._logger.setLevel(level)
         self._logger.propagate = False  # Avoid duplicate output
 
+        # Clear existing handlers to prevent duplication on repeated instantiation
+        self._logger.handlers.clear()
+
         fmt = logging.Formatter(
             "[%(asctime)s] [%(levelname)s] %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",

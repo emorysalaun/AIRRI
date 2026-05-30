@@ -2,6 +2,7 @@
 """Pipeline result reporting — score logging and CSV output."""
 
 import csv
+import threading
 from pathlib import Path
 
 
@@ -10,6 +11,7 @@ class PipelineReporter:
 
     def __init__(self, csv_path: Path):
         self.csv_path = Path(csv_path)
+        self._lock = threading.Lock()
         self.fieldnames = [
             "image_name",
             "engine",
@@ -54,6 +56,8 @@ class PipelineReporter:
             "cer": round(cer, 4),
             "wer": round(wer, 4),
         }
-        with open(self.csv_path, "a", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=self.fieldnames)
-            writer.writerow(row)
+        with self._lock:
+            with open(self.csv_path, "a", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=self.fieldnames)
+                writer.writerow(row)
+

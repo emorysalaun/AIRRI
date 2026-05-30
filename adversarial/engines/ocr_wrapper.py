@@ -102,25 +102,26 @@ def run_ocr_on_pil(pil_image, engine_name, work_dir=None):
         work_dir = tempfile.mkdtemp(prefix="ocr_run_pil_", dir=temp_dir)
         cleanup = True
 
-    in_dir = Path(work_dir) / "input"
-    out_dir = Path(work_dir) / "output"
-    in_dir.mkdir(parents=True, exist_ok=True)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        in_dir = Path(work_dir) / "input"
+        out_dir = Path(work_dir) / "output"
+        in_dir.mkdir(parents=True, exist_ok=True)
+        out_dir.mkdir(parents=True, exist_ok=True)
 
-    img_path = in_dir / "query.png"
-    pil_image.save(img_path)
+        img_path = in_dir / "query.png"
+        pil_image.save(img_path)
 
-    ENGINE_FNS[engine_name](in_dir, out_dir)
+        ENGINE_FNS[engine_name](in_dir, out_dir)
 
-    txt_path = out_dir / "query.txt"
-    extracted_text = ""
-    if txt_path.exists():
-        extracted_text = txt_path.read_text(encoding="utf-8")
+        txt_path = out_dir / "query.txt"
+        extracted_text = ""
+        if txt_path.exists():
+            extracted_text = txt_path.read_text(encoding="utf-8")
 
-    if cleanup:
-        shutil.rmtree(work_dir, ignore_errors=True)
-
-    return extracted_text
+        return extracted_text
+    finally:
+        if cleanup:
+            shutil.rmtree(work_dir, ignore_errors=True)
 
 
 class OCRModelWrapper:
@@ -191,4 +192,7 @@ class OCRModelWrapper:
         return self._query_count
 
     def __del__(self):
-        self.cleanup()
+        try:
+            self.cleanup()
+        except Exception:
+            pass

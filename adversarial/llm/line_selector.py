@@ -1,38 +1,47 @@
-"""LLM-based semantic line selection using Hugging Face Inference API."""
+"""LLM-based semantic line selection using local HuggingFace transformers."""
 
 import json
 import logging
-import os
+import re
 import time
-from pathlib import Path
-from dotenv import load_dotenv
-from huggingface_hub import InferenceClient
+
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 logger = logging.getLogger(__name__)
 
-# Load .env file containing HF_TOKEN
-_ADV_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(_ADV_DIR / ".env")
-
 
 class LLMLineSelector:
-    """Selects the most semantically important lines from assignment text using LLM."""
+    """Selects the most semantically important lines from assignment text using a local LLM."""
 
     def __init__(
         self,
-        model: str = "Qwen/Qwen3.6-35B-A3B:fastest",
+        model: str = "Qwen/Qwen3-32B",
+        device: str | None = None,
+        torch_dtype: torch.dtype = torch.bfloat16,
         max_retries: int = 3,
         retry_delay: float = 2.0,
     ):
-        self.model = model
+        self.model_name = model
         self.max_retries = max_retries
         self.retry_delay = retry_delay
 
-        hf_token = os.environ.get("HF_TOKEN")
-        if not hf_token:
-            logger.warning("HF_TOKEN environment variable not set. LLM requests will fail unless API is public.")
-        
-        self.client = InferenceClient(api_key=hf_token)
+        if device is None:
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            self.device = device
+
+        logger.info(f"Loading tokenizer for {model}...")
+        self.tokenizer = AutoTokenizer.from_pretrained(model)
+
+        logger.info(f"Loading model {model} (dtype={torch_dtype}) onto {self.device}...")
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model,
+            torch_dtype=torch_dtype,
+            device_map=self.device,
+        )
+        self.model.eval()
+        logger.info(f"Model {model} loaded successfully.")
 
     def select_important_lines(self, ground_truth: str) -> list[str]:
         """Ask the LLM to identify the most important lines/sentences needed to do the assignment.
@@ -41,7 +50,7 @@ class LLMLineSelector:
             A list of important lines/sentences exactly as they appear in ground_truth.
 
         Raises:
-            RuntimeError: If the API call fails or selects no valid lines.
+            RuntimeError: If inference fails or selects no valid lines.
         """
         ground_truth = ground_truth.strip()
         if not ground_truth:
@@ -84,19 +93,35 @@ Assignment text:
 """
 
         messages = [
-            {"role": "user", "content": [{"type": "text", "text": prompt}]}
+            {"role": "user", "content": prompt}
         ]
 
         for attempt in range(self.max_retries):
             try:
-                completion = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    max_tokens=16000,
+                # Apply chat template with thinking disabled for clean JSON output
+                input_text = self.tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                    enable_thinking=False,
                 )
-                response_text = completion.choices[0].message.content
+                inputs = self.tokenizer(input_text, return_tensors="pt").to(self.device)
+
+                with torch.no_grad():
+                    output_ids = self.model.generate(
+                        **inputs,
+                        max_new_tokens=4096,
+                        do_sample=False,
+                    )
+
+                # Decode only the newly generated tokens (skip prompt tokens)
+                generated_ids = output_ids[0][inputs["input_ids"].shape[1]:]
+                response_text = self.tokenizer.decode(
+                    generated_ids, skip_special_tokens=True
+                )
+
                 if not response_text:
-                    raise ValueError("LLM API returned an empty response.")
+                    raise ValueError("LLM returned an empty response.")
 
                 lines = self._parse_json_response(response_text)
 
@@ -123,18 +148,25 @@ Assignment text:
 
             except Exception as e:
                 logger.error(
-                    f"LLM API call or parsing failed on attempt {attempt + 1}/{self.max_retries}: {e}"
+                    f"LLM inference or parsing failed on attempt {attempt + 1}/{self.max_retries}: {e}"
                 )
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delay * (2**attempt))
                 else:
-                    raise RuntimeError(f"LLM API call failed permanently: {e}")
+                    raise RuntimeError(f"LLM inference failed permanently: {e}")
 
-        raise RuntimeError("LLM API call failed and no response was received.")
+        raise RuntimeError("LLM inference failed and no response was received.")
 
     def _parse_json_response(self, response_text: str) -> list[str]:
-        """Parse JSON array from LLM response, stripping markdown fences if present."""
+        """Parse JSON array from LLM response, stripping markdown fences and thinking tokens."""
         clean_text = response_text.strip()
+
+        # Strip <think>...</think> blocks (defense-in-depth for Qwen3)
+        clean_text = re.sub(
+            r"<think>.*?</think>", "", clean_text, flags=re.DOTALL
+        ).strip()
+
+        # Strip markdown code fences
         if clean_text.startswith("```"):
             first_newline = clean_text.find("\n")
             if first_newline != -1:
@@ -148,13 +180,54 @@ Assignment text:
         raise ValueError("LLM response did not contain a JSON array.")
 
     def _find_fuzzy_match(self, line: str, ground_truth: str) -> str | None:
-        """Find a substring in ground_truth that matches line, ignoring whitespace differences."""
+        """Find a substring in ground_truth that matches line, ignoring whitespace differences.
+
+        Handles multi-line spans by first checking against the full normalized text,
+        then falling back to per-line matching.
+        """
         normalized_line = "".join(line.split())
         if not normalized_line:
             return None
 
+        # First: try matching against the full normalized text (handles multi-line spans)
+        normalized_full = "".join(ground_truth.split())
+        pos = normalized_full.find(normalized_line)
+        if pos != -1:
+            # Map back to original text: find the original character range
+            # by walking through ground_truth and counting non-whitespace chars
+            orig_start = None
+            orig_end = None
+            non_ws_count = 0
+            for i, ch in enumerate(ground_truth):
+                if not ch.isspace():
+                    if non_ws_count == pos and orig_start is None:
+                        orig_start = i
+                    non_ws_count += 1
+                    if non_ws_count == pos + len(normalized_line):
+                        orig_end = i + 1
+                        break
+            if orig_start is not None and orig_end is not None:
+                return ground_truth[orig_start:orig_end].strip()
+
+        # Fallback: check individual lines
         lines = [l.strip() for l in ground_truth.splitlines() if l.strip()]
         for l in lines:
             if normalized_line in "".join(l.split()):
                 return l
+
         return None
+
+    def cleanup(self):
+        """Free GPU memory by deleting the model and tokenizer."""
+        if hasattr(self, "model"):
+            del self.model
+        if hasattr(self, "tokenizer"):
+            del self.tokenizer
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    def __del__(self):
+        try:
+            self.cleanup()
+        except Exception:
+            pass

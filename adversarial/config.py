@@ -69,7 +69,7 @@ class PipelineConfig:
     output_dir: Path = Path(__file__).resolve().parent / "output"
 
     # LLM-based line selection configuration
-    llm_model: str = "Qwen/Qwen3.6-35B-A3B:fastest"
+    llm_model: str = "Qwen/Qwen3-32B"
     llm_max_retries: int = 3
 
     # Rendering configuration
