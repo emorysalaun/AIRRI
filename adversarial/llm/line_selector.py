@@ -62,32 +62,33 @@ class LLMLineSelector:
         if not ground_truth:
             return []
 
-        prompt = f"""You are analyzing a document that may be an academic assignment or a general reading passage.
+        prompt = f"""You are an expert document analysis AI. Your objective is to extract the most critical information from a given document, whether it is a general reading passage or an academic assignment.
 
-Your goal is to identify the exact lines or sentences that contain the most critical information.
+### CRITICAL EXTRACTION GOALS
+Identify and extract the exact lines or sentences that contain the core substance or actionable requirements of the text. These excerpts DO NOT need to be consecutive.
 
-If the document is an assignment, select the smallest set of verbatim excerpts that collectively answer questions such as:
-- What is the student being asked to do?
-- What deliverables are required?
-- What constraints must the response satisfy?
+* For Academic Assignments (Task Execution): Extract the absolute minimum set of verbatim instructions an AI would need to complete the assignment perfectly. Focus exclusively on:
+  - The specific task, problem, or topic to be addressed.
+  - Required deliverables.
+  - Strict constraints (format, length, citation style, language, required sources).
+  - Specific grading or evaluation criteria.
+* For General Documents (Core Message): Extract the sentences that encapsulate the primary thesis, critical facts, or main conclusions.
 
-If the document is a general reading passage or article, select the 1-3 most important sentences that convey the core facts, main idea, or central thesis.
+### EXCLUSION CRITERIA (DO NOT EXTRACT)
+Ignore all text related to:
+* Administrative information, due dates, or course logistics.
+* Submission procedures (e.g., "Upload to Canvas", "File naming conventions").
+* Generic academic integrity statements or boilerplate policies.
+* Instructor contact information or office hours.
+* Filler text or introductory fluff.
 
-The lines DO NOT need to be consecutive.
+### STRICT CONSTRAINTS
+1. EXACT SUBSTRING MATCH REQUIRED: You MUST copy the text exactly, character-for-character, from the source document. Do NOT alter whitespace, capitalization, punctuation, or fix typos.
+2. NO MODIFICATIONS: Do not paraphrase, summarize, combine, or truncate excerpts. Any extracted string that is not a literal substring of the source text will cause a system failure.
+3. MAXIMUM LENGTH: The total length of the extracted text MUST NOT exceed 50% of the original document's length. Prioritize ruthlessly.
+4. JSON OUTPUT ONLY: Return ONLY a valid JSON array of strings. Do not include explanations, conversational text, or Markdown formatting (do not use ```json). If no critical information exists, return an empty array [].
 
-Prioritize instructions or core facts. Do NOT prioritize administrative details, logistics, or filler text.
-
-Selection Constraints:
-1. Choose only lines that are essential for completing the assignment.
-2. If removing a line would significantly reduce an LLM's ability to perform the task correctly, include it.
-3. Prefer task-defining instructions over administrative details.
-4. EXACT SUBSTRING MATCH REQUIRED: You must copy and paste the text exactly character-for-character from the Assignment text. Do NOT alter whitespace, capitalization, or punctuation.
-5. Do not paraphrase, summarize, or combine excerpts.
-6. Extracted text cannot exceed 50% of original text in length.
-
-Return ONLY a JSON array of strings, where each string is an EXACT, UNALTERED excerpt from the original assignment text. Any string that is not a literal substring of the assignment text will cause a system failure.
-
-Assignment text:
+Source Document:
 {ground_truth}
 """
 

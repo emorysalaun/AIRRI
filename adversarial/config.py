@@ -4,6 +4,17 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent / ".env")
+except ImportError:
+    pass
+
+# Force HuggingFace to use the ENV cache directory before any other module imports it
+_cache_dir = os.getenv("LLM_CACHE_DIR")
+if _cache_dir:
+    os.environ["HF_HOME"] = _cache_dir
+
 
 @dataclass
 class PipelineConfig:
