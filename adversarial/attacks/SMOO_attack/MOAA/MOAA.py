@@ -2,6 +2,7 @@ from .operators import *
 from .Solutions import *
 import numpy as np
 import time
+from operator import attrgetter
 
 
 
