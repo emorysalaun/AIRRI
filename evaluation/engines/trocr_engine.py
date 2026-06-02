@@ -213,9 +213,7 @@ def run_trocr_folder(
                     generated_ids = model.generate(
                         pixel_values,
                         max_new_tokens=max_new_tokens,
-                        num_beams=6,
-                        early_stopping=True,
-                        no_repeat_ngram_size=3,
+                        num_beams=1,
                     )
 
                 line_text = processor.batch_decode(

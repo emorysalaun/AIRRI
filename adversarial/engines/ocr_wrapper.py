@@ -69,7 +69,7 @@ ENGINE_FNS = {
         output_dir=out_dir,
         model_name="stepfun-ai/GOT-OCR-2.0-hf",
         device=None,
-        max_new_tokens=1024,
+        max_new_tokens=128,
     ),
     "trocr": lambda in_dir, out_dir: run_trocr_folder(
         input_dir=in_dir,
