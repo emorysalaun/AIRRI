@@ -259,7 +259,7 @@ def run_ocr_attacks(config: PipelineConfig, engine_name: str):
     # Expensive VLM-based engines should not be parallelized — they share a
     # single GPU model and CUDA serializes the calls anyway, so extra threads
     # only add overhead and memory pressure.
-    SERIAL_ENGINES = {"gotocr"}
+    SERIAL_ENGINES = {"gotocr", "trocr"}
     n_workers = 1 if engine_name in SERIAL_ENGINES else min(16, len(tasks))
 
     with concurrent.futures.ThreadPoolExecutor(
