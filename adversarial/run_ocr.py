@@ -256,8 +256,14 @@ def run_ocr_attacks(config: PipelineConfig, engine_name: str):
     gpu_semaphore = threading.Semaphore(4)
     futures = []
 
+    # Expensive VLM-based engines should not be parallelized — they share a
+    # single GPU model and CUDA serializes the calls anyway, so extra threads
+    # only add overhead and memory pressure.
+    SERIAL_ENGINES = {"gotocr"}
+    n_workers = 1 if engine_name in SERIAL_ENGINES else min(16, len(tasks))
+
     with concurrent.futures.ThreadPoolExecutor(
-        max_workers=min(16, len(tasks)),
+        max_workers=n_workers,
         thread_name_prefix="attack-config",
     ) as executor:
         for attack_name, eps in tasks:

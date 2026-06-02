@@ -55,9 +55,15 @@ def run_gotocr_folder(
                 outputs = model.generate(
                     **inputs,
                     max_new_tokens=max_new_tokens,
+                    do_sample=False,
+                    tokenizer=processor.tokenizer,
+                    stop_strings="<|im_end|>",
                 )
 
-            text = processor.batch_decode(outputs, skip_special_tokens=True)[0].strip()
+            # Decode only the newly generated tokens, stripping the input prompt
+            prompt_len = inputs["input_ids"].shape[1]
+            generated_ids = outputs[:, prompt_len:]
+            text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
 
             out_path = output_dir / f"{image_path.stem}.txt"
             out_path.write_text(text, encoding="utf-8")
