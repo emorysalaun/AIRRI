@@ -66,3 +66,5 @@ evaluation/activate.bat
 backend/data/*
 !backend/data/.gitkeep
 backend/internal/db/db.go
+
+modular_pipeline/results/

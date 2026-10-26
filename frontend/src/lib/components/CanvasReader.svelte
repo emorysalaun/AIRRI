@@ -1,9 +1,6 @@
 	<script lang="ts">
 		import { onMount } from 'svelte';
-		import { drawText, measureTextHeight } from '$lib/canvas/drawText';
-		import { drawNoise } from '$lib/canvas/perturbations/noise';
-		import { createSeededRng, deriveSeed } from '$lib/canvas/seededRng';
-		import { drawStripes, drawBetweenLineStripes } from '$lib/canvas/perturbations/stripes';
+		import { render } from '$lib/canvas/render';
 
 		export let text = '';
 		let canvas: HTMLCanvasElement;
@@ -23,56 +20,23 @@
 		export let opacityJitter = 0;
 		export let seed = 0;
 
-		let lastHeight = -1;
-
 		function redraw() {
 			if (!canvas) return;
 
-			const neededH = measureTextHeight(canvas, text, fontSize, lineSpacing, wordSpacing, charSpacing);
-			if (neededH !== lastHeight) {
-				canvas.style.height = `${neededH}px`;
-				lastHeight = neededH;
-			}
-
-			const opacityRandom = createSeededRng(deriveSeed(seed, 'opacityJitter'));
-			const layout = drawText(
-				canvas,
+			render(canvas, {
 				text,
+				seed,
+				noise,
+				stripes,
 				fontSize,
 				lineSpacing,
-				wordSpacing,
 				charSpacing,
-				opacityJitter,
-				opacityRandom
-			);
-			if (!layout) return;
-
-			const ctx = canvas.getContext('2d');
-			if (!ctx) return;
-
-			const rect = canvas.getBoundingClientRect();
-			const color = perturbationColor;
-
-			if (noise > 0) {
-				const noiseRandom = createSeededRng(deriveSeed(seed, 'noise'));
-				drawNoise(ctx, rect.width, rect.height, noise, color, noiseRandom);
-			}
-
-			if (stripes > 0) {
-				if (stripeMode === 'global') {
-					drawStripes(ctx, rect.width, rect.height, stripes, 8, 8, color, stripeAngle);
-				} else {
-					drawBetweenLineStripes(
-						ctx,
-						rect.width,
-						layout.lineYs,
-						fontSize,
-						layout.lineHeight,
-						stripes,
-						color
-					);
-				}
-			}
+				wordSpacing,
+				perturbationColor,
+				stripeAngle,
+				stripeMode,
+				opacityJitter
+			});
 		}
 
 		export function exportPng() {
